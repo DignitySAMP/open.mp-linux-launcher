@@ -1,0 +1,41 @@
+[workspace]
+resolver = "3"
+members = ["crates/core", "crates/tui"]
+# Windows-only helpers are built for i686-pc-windows-msvc by crates/tui/build.rs (and by `just`),
+# never for the host, so they are deliberately not workspace members.
+exclude = ["crates/injector", "crates/testpe"]
+
+[workspace.package]
+version = "0.1.1"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/DignitySAMP/open.mp-linux-launcher"
+rust-version = "1.93"
+
+[workspace.dependencies]
+omptui-core = { path = "crates/core" }
+anyhow = "1"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "net", "time", "sync", "macros", "process", "io-util", "fs"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "json", "gzip"] }
+directories = "6"
+chardetng = "1"
+encoding_rs = "0.8"
+md-5 = "0.11"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+tempfile = "3"
+wiremock = "0.6"
+insta = { version = "1", features = ["yaml"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+opt-level = 3
+
+[profile.dev.package."*"]
+opt-level = 1

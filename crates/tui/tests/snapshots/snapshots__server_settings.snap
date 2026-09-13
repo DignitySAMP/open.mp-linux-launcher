@@ -1,0 +1,24 @@
+---
+source: crates/tui/tests/snapshots.rs
+expression: "render(&mut h.app, 100, 20)"
+---
+" omp-tui  1 Favorites (0)   2 Internet (3)   3 Partners (1)   4 Recent (0)    / search              "
+"┌ Internet ───────────────────────────────────────────────────────┐┌ Players (3) ──────────────────┐"
+"│  server                                       players    ping   ││name                      score│"
+"│▶   ◆ Alpha Freeroam                            12/100    45ms   ││johnny                      123│"
+"│    ○ Bravo Roleplay                             0/100     --- 🔒││bigsmoke                     69│" Hidden by multi-width symbols: [(65, " ")]
+"│    ◆ Charlie Dea┌ Server settings ─────────────────────────────────────────────┐              420│"
+"│                 │Alpha Freeroam  127.0.0.1:7001                                │                 │"
+"│                 │                                                              │                 │"
+"│                 │nickname     Alpha_Nick                                       │                 │"
+"│                 │password                                                      │                 │"
+"│                 │SA-MP        0.3.7-R1                                         │                 │"
+"└─────────────────│                                                              │─────────────────┘"
+"┌ Details ────────│empty = use global setting.  Enter save  Esc cancel  Tab next │n 30 avg 38 max 6┐"
+"│Alpha Freeroam  1│←/→ change version                                            │                 │"
+"│mode      Freeroa└──────────────────────────────────────────────────────────────┘                 │"
+"│language  English                                                ││      █▄                       │"
+"│players   12/100                                                 ││   ▆  ██                       │"
+"│version   omp 1.5.8.3079  (open.mp)                              ││▆▁▇█▅▂██                       │"
+"└─────────────────────────────────────────────────────────────────┘└───────────────────────────────┘"
+" 3 servers loaded                                                                                   "

@@ -1,0 +1,36 @@
+[package]
+name = "sa-testpe"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Dummy 32-bit game exe + DLL used by omp-tui's Wine end-to-end injection test"
+publish = false
+
+# `dummy-game.exe` writes its command line to a file in its working directory and exits with
+# code 7 after a short sleep. `dummy.dll` writes a marker file when it is loaded.
+
+[[bin]]
+name = "dummy-game"
+path = "src/main.rs"
+test = false
+bench = false
+
+[lib]
+name = "dummy"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+test = false
+bench = false
+
+[dependencies]
+
+[profile.dev]
+panic = "abort"
+opt-level = 1
+
+[profile.release]
+panic = "abort"
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true

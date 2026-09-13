@@ -1,0 +1,34 @@
+[package]
+name = "omp-tui"
+description = "open.mp launcher for Linux written in Rust with Ratatui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+build = "build.rs"
+
+[[bin]]
+name = "omp-tui"
+path = "src/main.rs"
+
+[dependencies]
+omptui-core.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+ratatui = "0.30"
+crossterm = { version = "0.29", features = ["event-stream"] }
+futures = "0.3"
+clap = { version = "4", features = ["derive"] }
+unicode-width = "0.2"
+directories.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
+tempfile.workspace = true
+wiremock.workspace = true
+portable-pty = "0.9"
+vt100 = "0.16"

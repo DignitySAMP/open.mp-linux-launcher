@@ -1,0 +1,28 @@
+---
+source: crates/tui/tests/snapshots.rs
+expression: "render(&mut h.app, 100, 24)"
+---
+" omp-tui  1 Favorites (0)   2 Internet (3)   3 Partners (1)   4 Recent (0)    / search              "
+"┌ Internet ───────────────────────────────────────────────────────┐┌ Players (3) ──────────────────┐"
+"│  server                                       players    ping   ││name                      score│"
+"│▶   ◆ Alpha Freeroam                            12/100    45ms   ││johnny                      123│"
+"│    ○ Bravo Roleplay                             0/100     --- 🔒││bigsmoke                     69│" Hidden by multi-width symbols: [(65, " ")]
+"│    ◆ Charlie Deathmatch                        55/100   120ms   ││ryder                       420│"
+"│                 ┌ Join server ─────────────────────────────────────────────────┐                 │"
+"│                 │Alpha Freeroam  127.0.0.1:7001                                │                 │"
+"│                 │SA-MP       0.3.7-R5                                          │                 │"
+"│                 │                                                              │                 │"
+"│                 │nickname     CJ_Johnson                                       │                 │"
+"│                 │password    ▏••••••                                           │                 │"
+"│                 │            [ ] remember password                             │                 │"
+"└─────────────────│                                                              │─────────────────┘"
+"┌ Details ────────│            [ Join ]                                          │n 30 avg 38 max 6┐"
+"│Alpha Freeroam  1│Enter join  Tab next field  Esc cancel                        │                 │"
+"│mode      Freeroa│                                                              │                 │"
+"│language  English└──────────────────────────────────────────────────────────────┘                 │"
+"│players   12/100                                                 ││      █▄                       │"
+"│version   omp 1.5.8.3079  (open.mp)                              ││   ▃  ██                       │"
+"│ping      45ms                                                   ││▁ ▂█  ██                       │"
+"│discord   https://discord.gg/example                             ││█▁██▇▃██                       │"
+"└─────────────────────────────────────────────────────────────────┘└───────────────────────────────┘"
+" 3 servers loaded                                                                                   "

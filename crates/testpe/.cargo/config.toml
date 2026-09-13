@@ -1,0 +1,6 @@
+[build]
+target = "i686-pc-windows-msvc"
+
+[target.i686-pc-windows-msvc]
+linker = "lld-link"
+rustflags = ["-C", "link-arg=/NODEFAULTLIB", "-C", "link-arg=/SUBSYSTEM:CONSOLE"]

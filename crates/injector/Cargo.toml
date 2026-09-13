@@ -1,0 +1,30 @@
+[package]
+name = "omp-injector"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Tiny Windows helper (run under Wine) that starts gta_sa.exe and injects the SA-MP / open.mp client DLLs"
+publish = false
+
+# Built only for i686-pc-windows-msvc (see .cargo/config.toml). No std, no CRT, no SDK:
+# every Win32 import is declared by hand with raw-dylib, so the only tool needed is lld-link.
+
+[[bin]]
+name = "omp-injector"
+path = "src/main.rs"
+test = false
+bench = false
+
+[dependencies]
+
+[profile.dev]
+panic = "abort"
+opt-level = 1
+
+[profile.release]
+panic = "abort"
+opt-level = "s"
+lto = true
+codegen-units = 1
+debug = false
+strip = true

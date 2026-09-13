@@ -1,0 +1,13 @@
+# This crate is always a 32-bit Windows PE (gta_sa.exe is 32-bit).
+[build]
+target = "i686-pc-windows-msvc"
+
+[target.i686-pc-windows-msvc]
+# LLVM's COFF linker from the `lld` package; no Windows SDK or mingw needed because the crate is
+# no_std, links no CRT and declares its Win32 imports with `raw-dylib`.
+linker = "lld-link"
+rustflags = [
+    "-C", "link-arg=/ENTRY:mainCRTStartup",
+    "-C", "link-arg=/SUBSYSTEM:CONSOLE",
+    "-C", "link-arg=/NODEFAULTLIB",
+]

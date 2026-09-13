@@ -1,0 +1,28 @@
+[package]
+name = "omptui-core"
+description = "Protocol, API, persistence and launch logic for the omp-tui launcher (no UI)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+tokio.workspace = true
+reqwest.workspace = true
+directories.workspace = true
+chardetng.workspace = true
+encoding_rs.workspace = true
+md-5.workspace = true
+tracing.workspace = true
+rand = "0.9"
+sevenz-rust2 = { version = "0.22", default-features = false }
+
+[dev-dependencies]
+sevenz-rust2 = { version = "0.22", default-features = false, features = ["compress", "util"] }
+tempfile.workspace = true
+wiremock.workspace = true

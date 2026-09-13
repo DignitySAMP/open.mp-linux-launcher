@@ -1,0 +1,24 @@
+---
+source: crates/tui/tests/snapshots.rs
+expression: "render(&mut h.app, 100, 20)"
+---
+" omp-tui  1 Favorites (0)   2 Internet (3)   3 Partners (1)   4 Recent (0)    /bravo                "
+"┌ Internet ───────────────────────────────────────────────────────┐┌ Players (0) ──────────────────┐"
+"│  server                                       players    ping   ││nobody online                  │"
+"│▶   ○ Bravo Roleplay                             0/100     --- 🔒││                               │" Hidden by multi-width symbols: [(65, " ")]
+"│                                                                 ││                               │"
+"│                                                                 ││                               │"
+"│                                                                 ││                               │"
+"│                                                                 ││                               │"
+"│                                                                 ││                               │"
+"│                                                                 ││                               │"
+"│                                                                 ││                               │"
+"└──────────────────────────────────────────────────────────── 1/3 ┘└───────────────────────────────┘"
+"┌ Details ────────────────────────────────────────────────────────┐┌ Ping: unreachable ────────────┐"
+"│Bravo Roleplay  127.0.0.1:7002                                   ││                               │"
+"│mode      Bravo Roleplay mode                                    ││                               │"
+"│language  English                                                ││                               │"
+"│players   0/100   password protected                             ││                               │"
+"│version   0.3.7-R2                                               ││                               │"
+"└─────────────────────────────────────────────────────────────────┘└───────────────────────────────┘"
+" 3 servers loaded                                                                                   "
