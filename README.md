@@ -31,10 +31,44 @@ cargo build --release
 Run `omp-tui`. The first boot finds Wine and the game, downloads the client files and opens the
 server list. `Enter` joins, `F` favorites, `/` searches, `,` opens settings, `?` lists all keys.
 
+### Command line
+
+Alternatively, you can join straight from a link:
+
 ```
 omp-tui omp://1.2.3.4:7777
-omp-tui -h 1.2.3.4 -p 7777 -n Nick -g "/path/to/GTA San Andreas"
+omp-tui samp://1.2.3.4:7777
 ```
+
+You can launch the game directly without the UI by using the same flags as the original launcher:
+
+```
+omp-tui -h 1.2.3.4 -p 7777 -n Nick -g "/path/to/GTA San Andreas" -P password
+```
+
+> If the server does not require a password, you don't have to pass the optional -P flag.
+
+### Other flags
+
+| flag                           | what it does                                                |
+| ------------------------------ | ----------------------------------------------------------- |
+| `--wine PATH`, `--prefix PATH` | use another Wine or prefix for this run                     |
+| `--samp-version 037R5`         | SA-MP client version (`037R1` .. `037R5`, `03DL`, `custom`) |
+| `--check`                      | report on Wine, prefix, game exe and client files           |
+| `--dump`                       | print the server list as JSON                               |
+| `--install-desktop`            | install the binary, desktop entry and `omp://` handler      |
+
+You can also use `--help` to see all flags, `--no-omp` to play without open.mp injected and `--version`.
+
+### Files
+
+| file                        | where                    |
+| --------------------------- | ------------------------ |
+| Settings                    | `~/.config/omp-tui`      |
+| Favourites and client files | `~/.local/share/omp-tui` |
+| Logging                     | `~/.local/state/omp-tui` |
+
+> For debugging, you can change the logging state to debug to get detailed information. `OMPTUI_LOG=debug`.
 
 ## Notes
 
