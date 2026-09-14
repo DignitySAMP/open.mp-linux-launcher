@@ -120,12 +120,12 @@ fn draw_list(f: &mut Frame, app: &mut App, area: Rect) {
             format!("master list unavailable: {e}\npress r to retry")
         } else if app.loading {
             "loading master list…".to_string()
+        } else if !app.list().is_empty() {
+            "no servers match the current search/filters".to_string()
         } else if matches!(app.tab, ListKind::Favorites) {
             "no favorites yet\npress F on a server to add it, or a to add by address".to_string()
         } else if matches!(app.tab, ListKind::Recent) {
             "no recently joined servers".to_string()
-        } else if !app.filters.query.is_empty() || app.filters.active_count() > 0 {
-            "no servers match the current search/filters".to_string()
         } else {
             "no servers".to_string()
         };

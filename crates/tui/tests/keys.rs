@@ -609,3 +609,28 @@ async fn tiny_terminals_do_not_panic() {
         key(&mut h.app, KeyCode::Esc);
     }
 }
+
+#[tokio::test]
+async fn added_server_shows_up_once_its_query_answers_with_filters_on() {
+    let mut h = app_with_list().await;
+    key(&mut h.app, KeyCode::Char('e'));
+    key(&mut h.app, KeyCode::Char('a'));
+    type_str(&mut h.app, "127.0.0.1:7400");
+    key(&mut h.app, KeyCode::Enter);
+    pump_until(&mut h, |e| matches!(e, AppEvent::Resolved { .. })).await;
+    assert_eq!(h.app.tab, ListKind::Favorites);
+    assert_eq!(h.app.lists.favorites.len(), 1);
+    assert!(h.app.view.is_empty(), "no player count yet, hidden by the non-empty filter");
+    let addr = "127.0.0.1:7400".parse().unwrap();
+    let info = omptui_core::query::packet::InfoPacket {
+        players: 3,
+        max_players: 50,
+        hostname: "Late".into(),
+        ..Default::default()
+    };
+    h.app.handle_event(AppEvent::Basic { addr, result: BasicResult { info: Some(info), ping: Some(9) } });
+    assert_eq!(h.app.view.len(), 1);
+    assert_eq!(selected_name(&h.app), "Late");
+    let screen = render(&mut h.app, 100, 24);
+    assert!(screen.contains("Late"), "{screen}");
+}

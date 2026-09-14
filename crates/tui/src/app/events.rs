@@ -189,7 +189,7 @@ impl App {
         if let Some(p) = b.ping {
             self.push_ping(addr, p);
         }
-        if self.filters.sort != SortKey::None {
+        if self.filters_depend_on_queries() {
             self.rebuild_view();
         }
     }
@@ -199,9 +199,14 @@ impl App {
         if let Some(p) = f.basic.ping {
             self.push_ping(addr, p);
         }
-        if self.filters.sort != SortKey::None {
+        if self.filters_depend_on_queries() {
             self.rebuild_view();
         }
+    }
+
+    // player counts and passwords come from the queries, so these filters change as answers arrive
+    fn filters_depend_on_queries(&self) -> bool {
+        self.filters.sort != SortKey::None || self.filters.non_empty || self.filters.unpassworded
     }
 
     pub(super) fn launch_state(&mut self) -> &mut LaunchState {
