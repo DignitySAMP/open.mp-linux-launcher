@@ -634,3 +634,20 @@ async fn added_server_shows_up_once_its_query_answers_with_filters_on() {
     let screen = render(&mut h.app, 100, 24);
     assert!(screen.contains("Late"), "{screen}");
 }
+
+#[tokio::test]
+async fn status_line_clears_quickly_and_on_esc() {
+    let mut h = app_with_list().await;
+    h.app.status("2 servers loaded", false);
+    h.app.handle_event(AppEvent::Tick);
+    assert!(h.app.status.is_some());
+    h.app.status.as_mut().unwrap().at = std::time::Instant::now() - Duration::from_secs(3);
+    h.app.handle_event(AppEvent::Tick);
+    assert!(h.app.status.is_none());
+    h.app.status("boom", true);
+    h.app.status.as_mut().unwrap().at = std::time::Instant::now() - Duration::from_secs(3);
+    h.app.handle_event(AppEvent::Tick);
+    assert!(h.app.status.is_some(), "errors stay longer");
+    key(&mut h.app, KeyCode::Esc);
+    assert!(h.app.status.is_none());
+}

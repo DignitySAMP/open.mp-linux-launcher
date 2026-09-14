@@ -232,11 +232,11 @@ impl App {
 
     pub(super) fn on_tick(&mut self) {
         self.ticks = self.ticks.wrapping_add(1);
-        if let Some(st) = &self.status
-            && st.at.elapsed().as_secs() > 8
-            && !st.error
-        {
-            self.status = None;
+        if let Some(st) = &self.status {
+            let keep = if st.error { STATUS_ERROR_SECS } else { STATUS_SECS };
+            if st.at.elapsed().as_secs() >= keep {
+                self.status = None;
+            }
         }
         if let Some(addr) = self.selected {
             let paused = matches!(self.popup, Some(Popup::Settings(_)) | Some(Popup::Help));

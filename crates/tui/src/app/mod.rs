@@ -25,6 +25,8 @@ use tasks::{AppEvent, Services};
 
 pub const PING_HISTORY: usize = 120;
 const FULL_EVERY_TICKS: u32 = 3;
+const STATUS_SECS: u64 = 3;
+const STATUS_ERROR_SECS: u64 = 10;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StatusLine {

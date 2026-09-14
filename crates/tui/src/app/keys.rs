@@ -30,6 +30,7 @@ impl App {
         }
         match key.code {
             KeyCode::Char('q') => self.should_quit = true,
+            KeyCode::Esc => self.status = None,
             KeyCode::Char('?') => self.popup = Some(Popup::Help),
             KeyCode::Char('1') => self.set_tab(ListKind::Favorites),
             KeyCode::Char('2') => self.set_tab(ListKind::Internet),
