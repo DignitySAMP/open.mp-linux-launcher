@@ -4,6 +4,7 @@
 use crate::filter::Filters;
 use crate::model::{Server, ServerAddr};
 use crate::resources::SampVersion;
+use crate::secrets::Keyring;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
@@ -162,14 +163,34 @@ pub struct Lists {
 
 impl Lists {
     pub fn load(paths: &Paths) -> io::Result<Self> {
-        load_toml(&paths.lists_file())
+        let mut lists: Lists = load_toml(&paths.lists_file())?;
+        let stored: Vec<String> = lists.server_settings.values().filter_map(|s| s.password.clone()).collect();
+        if stored.iter().any(|p| Keyring::is_encrypted(p)) {
+            let keyring = Keyring::open(&paths.data_dir)?;
+            for s in lists.server_settings.values_mut() {
+                if let Some(p) = &s.password {
+                    // a password that no longer decrypts is dropped rather than used as-is
+                    s.password = keyring.decrypt(p);
+                }
+            }
+        }
+        Ok(lists)
     }
 
     pub fn save(&self, paths: &Paths) -> io::Result<()> {
+        let mut server_settings = self.server_settings.clone();
+        if server_settings.values().any(|s| s.password.is_some()) {
+            let keyring = Keyring::open(&paths.data_dir)?;
+            for s in server_settings.values_mut() {
+                if let Some(p) = &s.password {
+                    s.password = Some(keyring.encrypt(p));
+                }
+            }
+        }
         let stripped = Lists {
             favorites: self.favorites.iter().map(strip_volatile).collect(),
             recent: self.recent.iter().map(strip_volatile).collect(),
-            server_settings: self.server_settings.clone(),
+            server_settings,
         };
         save_toml(&paths.lists_file(), &stripped)
     }
@@ -327,6 +348,34 @@ mod tests {
         assert!(l.server_settings.is_empty());
         assert!(!l.toggle_favorite(&a));
         assert_eq!(l.favorites.len(), 1);
+    }
+
+    #[test]
+    fn passwords_are_encrypted_on_disk() {
+        let d = tempfile::tempdir().unwrap();
+        let paths = Paths::under(d.path());
+        let mut l = Lists::default();
+        let addr = srv("1.1.1.1", "A").addr.unwrap();
+        l.set_settings_for(addr, ServerSettings { password: Some("hunter2".into()), ..Default::default() });
+        l.save(&paths).unwrap();
+        let text = fs::read_to_string(paths.lists_file()).unwrap();
+        assert!(!text.contains("hunter2"), "{text}");
+        assert!(text.contains("enc1:"));
+        assert!(paths.data_dir.join("secret.key").is_file());
+        let back = Lists::load(&paths).unwrap();
+        assert_eq!(back.settings_for(addr).password.as_deref(), Some("hunter2"));
+
+        // files written before encryption existed still load, and get encrypted on the next save
+        fs::write(paths.lists_file(), "[server_settings.\"2.2.2.2:7777\"]\npassword = \"plain\"\n").unwrap();
+        let legacy = Lists::load(&paths).unwrap();
+        assert_eq!(legacy.settings_for("2.2.2.2:7777".parse().unwrap()).password.as_deref(), Some("plain"));
+        legacy.save(&paths).unwrap();
+        assert!(!fs::read_to_string(paths.lists_file()).unwrap().contains("plain"));
+
+        // a value encrypted with another key is dropped instead of being passed to the game
+        fs::remove_file(paths.data_dir.join("secret.key")).unwrap();
+        let other = Lists::load(&paths).unwrap();
+        assert_eq!(other.settings_for("2.2.2.2:7777".parse().unwrap()).password, None);
     }
 
     #[test]

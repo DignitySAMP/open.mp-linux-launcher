@@ -74,3 +74,7 @@ You can also use `--help` to see all flags, `--no-omp` to play without open.mp i
 
 Not affiliated with the open.mp or SA-MP projects. AI was used for the injector and package
 management.
+
+Saved server passwords are encrypted with XChaCha20-Poly1305. A 32-byte random key is generated
+once and stored in `~/.local/share/omp-tui/secret.key`, so sharing or backing up `lists.toml` does
+not leak them.

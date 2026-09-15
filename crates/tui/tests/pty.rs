@@ -111,7 +111,9 @@ async fn world() -> World {
         .await;
     let root = tempfile::tempdir().unwrap();
     let paths = Paths::under(root.path());
-    Settings { nickname: "Tester".into(), ..Default::default() }.save(&paths).unwrap();
+    let game = root.path().join("game");
+    std::fs::create_dir_all(&game).unwrap();
+    Settings { nickname: "Tester".into(), game_dir: Some(game), ..Default::default() }.save(&paths).unwrap();
     let env = vec![
         ("OMPTUI_API_URL", mock.uri()),
         ("OMPTUI_CONFIG_DIR", paths.config_dir.to_string_lossy().into_owned()),
@@ -200,6 +202,42 @@ async fn deep_link_opens_join_prompt() {
     let screen = tui.wait_for("Join server");
     assert!(screen.contains("Alpha Freeroam"), "{screen}");
     assert!(screen.contains("•••••••"), "password not prefilled:\n{screen}");
+    tui.send(b"\x1b");
+    tui.send(b"q");
+    assert!(tui.finish().success());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn remembered_password_is_encrypted_on_disk_and_restored() {
+    let w = world().await;
+    let mut tui = Tui::spawn(&w.env, &[]);
+    tui.wait_for("Alpha Freeroam");
+    tui.send(b"\r");
+    tui.wait_for("Join server");
+    tui.send(b"\t");
+    tui.send(b"hunter2");
+    tui.send(b"\t");
+    tui.send(b" ");
+    tui.send(b"\t\t");
+    tui.send(b"\r");
+    tui.wait_for("cannot launch: game executable not found");
+    tui.send(b"\x1b");
+    tui.send(b"q");
+    assert!(tui.finish().success());
+
+    let paths = Paths::under(w.root.path());
+    let text = std::fs::read_to_string(paths.lists_file()).unwrap();
+    assert!(!text.contains("hunter2"), "plaintext on disk:\n{text}");
+    assert!(text.contains("password = \"enc1:"), "{text}");
+    assert!(paths.data_dir.join("secret.key").is_file());
+    assert_eq!(Lists::load(&paths).unwrap().settings_for(w._fakes[0].addr()).password.as_deref(), Some("hunter2"));
+
+    let mut tui = Tui::spawn(&w.env, &[]);
+    tui.wait_for("Alpha Freeroam");
+    tui.send(b"\r");
+    let screen = tui.wait_for("Join server");
+    assert!(screen.contains("•••••••"), "password not restored:\n{screen}");
+    assert!(screen.contains("[x] remember password"), "{screen}");
     tui.send(b"\x1b");
     tui.send(b"q");
     assert!(tui.finish().success());

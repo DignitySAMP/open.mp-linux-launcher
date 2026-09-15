@@ -8,6 +8,7 @@ pub mod launch;
 pub mod model;
 pub mod query;
 pub mod resources;
+pub mod secrets;
 pub mod store;
 pub mod validation;
 pub mod wine;
