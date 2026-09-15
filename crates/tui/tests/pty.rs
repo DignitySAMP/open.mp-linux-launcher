@@ -114,8 +114,19 @@ async fn world() -> World {
     let game = root.path().join("game");
     std::fs::create_dir_all(&game).unwrap();
     Settings { nickname: "Tester".into(), game_dir: Some(game), ..Default::default() }.save(&paths).unwrap();
+    let files = omptui_core::resources::ClientFiles::new(&paths.data_dir);
+    for p in [files.samp_dll(omptui_core::resources::SampVersion::R5).unwrap(), files.omp_client_dll()] {
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, b"stub").unwrap();
+    }
+    for f in omptui_core::resources::SHARED_FILES {
+        let p = files.shared_dir().join(f.rel);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, b"stub").unwrap();
+    }
     let env = vec![
         ("OMPTUI_API_URL", mock.uri()),
+        ("OMPTUI_ASSETS_URL", mock.uri()),
         ("OMPTUI_CONFIG_DIR", paths.config_dir.to_string_lossy().into_owned()),
         ("OMPTUI_DATA_DIR", paths.data_dir.to_string_lossy().into_owned()),
         ("OMPTUI_STATE_DIR", paths.state_dir.to_string_lossy().into_owned()),

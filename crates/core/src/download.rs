@@ -14,6 +14,11 @@ pub const DEFAULT_ASSETS_URL: &str = "https://assets.open.mp";
 pub const SAMP_CLIENTS_ARCHIVE: &str = "samp_clients.7z";
 pub const SAMP_CLIENTS_MD5: &str = "5572377f1c6f9fbcb673a8cf26c19984";
 
+// True when a launch with these settings needs a file that is not in the data dir.
+pub fn missing_for(files: &ClientFiles, version: SampVersion, omp: bool) -> bool {
+    files.samp_dll(version).is_some_and(|p| !p.is_file()) || (omp && !files.omp_client_dll().is_file())
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum DownloadError {
     #[error("{0}")]

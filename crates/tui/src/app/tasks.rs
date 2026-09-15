@@ -81,7 +81,31 @@ impl Services {
     pub fn launch(&self, req: launch::LaunchRequest, files: omptui_core::resources::ClientFiles) {
         let tx = self.tx.clone();
         let helper = self.helper;
+        let api = self.api.clone();
         tokio::spawn(async move {
+            if omptui_core::download::missing_for(&files, req.samp_version, req.omp_inject) {
+                let _ = tx.send(AppEvent::Launch(HelperEvent::Log(
+                    "client files missing, fetching them from open.mp".into(),
+                )));
+                let tx3 = tx.clone();
+                let mut progress = move |line: String| {
+                    let _ = tx3.send(AppEvent::Launch(HelperEvent::Log(line)));
+                };
+                let fetched =
+                    omptui_core::download::download_client_files(&files, &api, &crate::assets_url(), &mut progress)
+                        .await;
+                match fetched {
+                    Ok(lines) => {
+                        for l in lines {
+                            let _ = tx.send(AppEvent::Launch(HelperEvent::Log(l)));
+                        }
+                    }
+                    Err(e) => {
+                        let _ = tx.send(AppEvent::LaunchPrepared(Err(format!("could not fetch client files: {e}"))));
+                        return;
+                    }
+                }
+            }
             let files2 = files.clone();
             let req2 = req.clone();
             let prepared =

@@ -32,3 +32,4 @@ tempfile.workspace = true
 wiremock.workspace = true
 portable-pty = "0.9"
 vt100 = "0.16"
+sevenz-rust2 = { version = "0.22", default-features = false, features = ["compress", "util"] }

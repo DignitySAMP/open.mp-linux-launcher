@@ -66,7 +66,7 @@ async fn run(cli: Cli, paths: Paths) -> anyhow::Result<()> {
     }
 
     if cli.is_direct_launch() {
-        return direct_launch(&cli, &settings, &files).await;
+        return direct_launch(&cli, &settings, &files, &svc.api).await;
     }
 
     let mut app = App::new(svc, paths, settings, lists);
@@ -119,7 +119,12 @@ fn apply_cli_overrides(settings: &mut Settings, cli: &Cli) {
     }
 }
 
-async fn direct_launch(cli: &Cli, settings: &Settings, files: &ClientFiles) -> anyhow::Result<()> {
+async fn direct_launch(
+    cli: &Cli,
+    settings: &Settings,
+    files: &ClientFiles,
+    api: &omptui_core::api::ApiClient,
+) -> anyhow::Result<()> {
     let host = cli.host.clone().unwrap();
     let port = cli.port.unwrap();
     let (addr, _) = tokio::task::spawn_blocking(move || resolve_host(&format!("{host}:{port}"))).await??;
@@ -150,6 +155,11 @@ async fn direct_launch(cli: &Cli, settings: &Settings, files: &ClientFiles) -> a
         create_suspended: settings.create_suspended,
         wait_for_module: settings.wait_for_module.clone(),
     };
+    if omptui_core::download::missing_for(files, req.samp_version, req.omp_inject) {
+        println!("Client files missing, fetching them from open.mp…");
+        let mut progress = |line: String| println!("  {line}");
+        omptui_core::download::download_client_files(files, api, &omp_tui::assets_url(), &mut progress).await?;
+    }
     let prepared = launch::prepare(&req, files, omp_tui::HELPER_EXE)?;
     for w in &prepared.warnings {
         eprintln!("warning: {w}");

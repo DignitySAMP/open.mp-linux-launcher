@@ -7,8 +7,8 @@ open.mp client files are downloaded from open.mp automatically.
 
 ![omp-tui](assets/preview.png)
 
-This was built to serve my personal need for having a browser on Arch. Beta tested by 2-3 people
-who helped me battle harden it. If you find any issues, feel free to open an issue or a PR.
+This was built to serve my personal need for having a server browser on Arch. If you find any
+issues, feel free to open an issue or a PR.
 
 ## Requirements
 
@@ -78,3 +78,5 @@ management.
 Saved server passwords are encrypted with XChaCha20-Poly1305. A 32-byte random key is generated
 once and stored in `~/.local/share/omp-tui/secret.key`, so sharing or backing up `lists.toml` does
 not leak them.
+
+For troubleshooting, use `omp-tui --check` to see why the game failed to launch.

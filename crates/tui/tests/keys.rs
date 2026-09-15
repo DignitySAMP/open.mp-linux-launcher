@@ -314,15 +314,31 @@ async fn join_popup_keys_and_remembered_password() {
     key(&mut h.app, KeyCode::Up);
     match &h.app.popup {
         Some(Popup::Join(f)) => {
-            assert_eq!(f.field, 3);
+            assert_eq!(f.field, 4);
             assert!(f.remember_password);
         }
         other => panic!("{other:?}"),
     }
+    key(&mut h.app, KeyCode::Char('v'));
+    key(&mut h.app, KeyCode::Up);
+    key(&mut h.app, KeyCode::Left);
+    key(&mut h.app, KeyCode::Left);
+    match &h.app.popup {
+        Some(Popup::Join(f)) => {
+            assert_eq!(f.field, 3);
+            assert_eq!(f.samp_version, SampVersion::R4);
+        }
+        other => panic!("{other:?}"),
+    }
+    key(&mut h.app, KeyCode::Enter);
+    assert!(matches!(&h.app.popup, Some(Popup::Join(f)) if f.samp_version == SampVersion::R5));
+    key(&mut h.app, KeyCode::Left);
+    key(&mut h.app, KeyCode::Down);
     key(&mut h.app, KeyCode::Enter);
     assert!(matches!(h.app.popup, Some(Popup::Launch(_))));
     let addr = "127.0.0.1:7001".parse().unwrap();
     assert_eq!(h.app.lists.settings_for(addr).password.as_deref(), Some("secret"));
+    assert_eq!(h.app.lists.settings_for(addr).samp_version, Some(SampVersion::R4));
     assert_eq!(Lists::load(&h.app.paths).unwrap().settings_for(addr).password.as_deref(), Some("secret"));
     h.app.handle_event(AppEvent::Launch(HelperEvent::Log("wine: noise".into())));
     key(&mut h.app, KeyCode::Char('c'));
@@ -344,6 +360,7 @@ async fn join_popup_keys_and_remembered_password() {
         Some(Popup::Join(f)) => {
             assert_eq!(f.password.value(), "secret");
             assert!(f.remember_password);
+            assert_eq!(f.samp_version, SampVersion::R4);
         }
         other => panic!("{other:?}"),
     }
@@ -650,4 +667,106 @@ async fn status_line_clears_quickly_and_on_esc() {
     assert!(h.app.status.is_some(), "errors stay longer");
     key(&mut h.app, KeyCode::Esc);
     assert!(h.app.status.is_none());
+}
+
+#[tokio::test]
+async fn joining_with_a_missing_client_version_fetches_it_first() {
+    use omptui_core::resources::SHARED_FILES;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let mut h = app_with_list().await;
+    let root = h.root.path().to_path_buf();
+    let src = root.join("archive-src");
+    for v in SampVersion::ALL {
+        if let Some(d) = v.dir_name() {
+            fs::create_dir_all(src.join(d)).unwrap();
+            fs::write(src.join(d).join("samp.dll"), format!("dll {}", v.id())).unwrap();
+        }
+    }
+    for f in SHARED_FILES {
+        let p = src.join("shared").join(f.rel);
+        fs::create_dir_all(p.parent().unwrap()).unwrap();
+        fs::write(p, b"x").unwrap();
+    }
+    sevenz_rust2::compress_to_path(&src, root.join("clients.7z")).unwrap();
+    let archive = fs::read(root.join("clients.7z")).unwrap();
+    let dll = b"omp client".to_vec();
+    let mock = MockServer::start().await;
+    let launcher = format!(
+        r#"{{"download":"x","ompPluginChecksum":"{}","ompPluginDownload":"{}/omp-client.dll","version":"6"}}"#,
+        omptui_core::resources::md5_bytes(&dll),
+        mock.uri()
+    );
+    Mock::given(method("GET"))
+        .and(path("/launcher"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(launcher, "application/json"))
+        .mount(&mock)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/samp_clients.7z"))
+        .respond_with(ResponseTemplate::new(200).set_body_bytes(archive))
+        .mount(&mock)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/omp-client.dll"))
+        .respond_with(ResponseTemplate::new(200).set_body_bytes(dll))
+        .mount(&mock)
+        .await;
+    h.app.svc.api = omptui_core::api::ApiClient::new(&mock.uri());
+    // SAFETY: the only test in this binary that touches the environment
+    unsafe { std::env::set_var("OMPTUI_ASSETS_URL", mock.uri()) };
+
+    let prefix = root.join("prefix");
+    let game = prefix.join("drive_c").join("game");
+    fs::create_dir_all(&game).unwrap();
+    fs::create_dir_all(prefix.join("dosdevices")).unwrap();
+    std::os::unix::fs::symlink("../drive_c", prefix.join("dosdevices/c:")).unwrap();
+    std::os::unix::fs::symlink("/", prefix.join("dosdevices/z:")).unwrap();
+    fs::write(prefix.join("system.reg"), "#arch=win64\n").unwrap();
+    fs::write(game.join("gta_sa.exe"), b"MZ").unwrap();
+    let wine = root.join("wine");
+    fs::write(&wine, "#!/bin/sh\necho '{\"event\":\"spawned\",\"pid\":1}'\necho '{\"event\":\"exit\",\"code\":0}'\n")
+        .unwrap();
+    use std::os::unix::fs::PermissionsExt;
+    fs::set_permissions(&wine, fs::Permissions::from_mode(0o755)).unwrap();
+    h.app.settings.game_dir = Some(game);
+    h.app.settings.wine_binary = Some(wine);
+    h.app.svc.helper = omp_tui::HELPER_EXE;
+    h.app.settings.wine_prefix = Some(prefix);
+    let files = ClientFiles::new(&h.app.paths.data_dir);
+
+    for v in SampVersion::ALL {
+        let Some(wanted) = files.samp_dll(v) else { continue };
+        fs::remove_dir_all(&files.data_dir).ok();
+        assert!(!wanted.is_file());
+        h.app.settings.samp_version = v;
+        key(&mut h.app, KeyCode::Enter);
+        ctrl(&mut h.app, 'u');
+        type_str(&mut h.app, "Carl_Johnson");
+        key(&mut h.app, KeyCode::Enter);
+        assert!(matches!(h.app.popup, Some(Popup::Launch(_))), "{v:?}");
+        pump_until(&mut h, |e| matches!(e, AppEvent::LaunchPrepared(_))).await;
+        let lines: Vec<String> = match &h.app.popup {
+            Some(Popup::Launch(st)) => st.lines.iter().map(|(l, _)| l.clone()).collect(),
+            other => panic!("{other:?}"),
+        };
+        assert!(lines.iter().any(|l| l.contains("fetching them from open.mp")), "{v:?}: {lines:?}");
+        assert!(lines.iter().any(|l| l.starts_with("running:")), "{v:?}: prepare should succeed: {lines:?}");
+        assert_eq!(fs::read_to_string(&wanted).unwrap(), format!("dll {}", v.id()), "{v:?}");
+        assert!(files.omp_client_dll().is_file(), "{v:?}");
+        pump_until(&mut h, |e| matches!(e, AppEvent::LaunchFinished(_))).await;
+        key(&mut h.app, KeyCode::Esc);
+    }
+
+    // custom means the game folder's samp.dll, nothing to download; a clear error instead
+    h.app.settings.samp_version = SampVersion::Custom;
+    key(&mut h.app, KeyCode::Enter);
+    key(&mut h.app, KeyCode::Enter);
+    pump_until(&mut h, |e| matches!(e, AppEvent::LaunchPrepared(_))).await;
+    match &h.app.popup {
+        Some(Popup::Launch(st)) => assert!(st.lines.iter().any(|(l, _)| l.contains("'custom'")), "{:?}", st.lines),
+        other => panic!("{other:?}"),
+    }
+    unsafe { std::env::remove_var("OMPTUI_ASSETS_URL") };
 }

@@ -1764,6 +1764,7 @@ dependencies = [
  "ratatui",
  "serde",
  "serde_json",
+ "sevenz-rust2",
  "tempfile",
  "tokio",
  "tracing",
