@@ -59,34 +59,30 @@ impl App {
             KeyCode::Esc => return,
             KeyCode::Tab | KeyCode::Down => form.field = (form.field + 1) % JoinForm::FIELDS,
             KeyCode::BackTab | KeyCode::Up => form.field = (form.field + JoinForm::FIELDS - 1) % JoinForm::FIELDS,
-            KeyCode::Enter => {
-                if form.field == 2 {
-                    form.remember_password = !form.remember_password;
-                } else {
-                    match validate_nickname(form.nickname.value()) {
-                        Ok(nick) => {
-                            self.launch(
-                                form.server.clone(),
-                                nick,
-                                form.password.value().to_owned(),
-                                form.remember_password,
-                                form.samp_version,
-                            );
-                            return;
-                        }
-                        Err(e) => {
-                            form.error = Some(e.to_string());
-                            form.field = 0;
-                        }
+            KeyCode::Enter => match form.field {
+                2 => form.remember_password = !form.remember_password,
+                3 => form.samp_version = form.samp_version.next(),
+                _ => match validate_nickname(form.nickname.value()) {
+                    Ok(nick) => {
+                        self.launch(
+                            form.server.clone(),
+                            nick,
+                            form.password.value().to_owned(),
+                            form.remember_password,
+                            form.samp_version,
+                        );
+                        return;
                     }
-                }
-            }
-            KeyCode::Char(' ') if form.field == 2 || form.field == 3 => {
-                if form.field == 2 {
-                    form.remember_password = !form.remember_password;
-                }
-            }
-            KeyCode::Left | KeyCode::Right if form.field == 3 => {}
+                    Err(e) => {
+                        form.error = Some(e.to_string());
+                        form.field = 0;
+                    }
+                },
+            },
+            KeyCode::Char(' ') if form.field == 2 => form.remember_password = !form.remember_password,
+            KeyCode::Left if form.field == 3 => form.samp_version = form.samp_version.prev(),
+            KeyCode::Right | KeyCode::Char(' ') if form.field == 3 => form.samp_version = form.samp_version.next(),
+            KeyCode::Char('v') if form.field > 1 => form.samp_version = form.samp_version.next(),
             _ => match form.field {
                 0 => {
                     form.nickname.handle(key);
@@ -121,6 +117,7 @@ impl App {
         self.settings.use_nickname(&nickname);
         let mut per = self.lists.settings_for(addr);
         per.password = if remember_password && !password.is_empty() { Some(password.clone()) } else { None };
+        per.samp_version = if samp_version == self.settings.samp_version { None } else { Some(samp_version) };
         self.lists.set_settings_for(addr, per);
         self.lists.push_recent(&server);
         self.save_all();

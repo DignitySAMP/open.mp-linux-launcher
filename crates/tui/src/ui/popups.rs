@@ -68,12 +68,7 @@ fn draw_join(f: &mut Frame, area: Rect, form: &JoinForm) {
             Span::raw("  "),
             Span::styled(s.address_text(), theme::dim()),
         ]),
-        Line::from(vec![
-            Span::styled(format!("{:<12}", "SA-MP"), theme::dim()),
-            Span::styled(form.samp_version.label(), theme::text()),
-            Span::styled(if s.info.password { "   (server has a password)" } else { "" }, theme::warn()),
-        ]),
-        Line::raw(""),
+        Line::from(Span::styled(if s.info.password { "server has a password" } else { "" }, theme::warn())),
         field("nickname", &form.nickname, form.field == 0),
         field("password", &form.password, form.field == 1),
         Line::from(vec![
@@ -83,21 +78,29 @@ fn draw_join(f: &mut Frame, area: Rect, form: &JoinForm) {
                 if form.field == 2 { theme::key() } else { theme::text() },
             ),
         ]),
+        Line::from(vec![
+            Span::styled(format!("{:<12}", "SA-MP"), theme::dim()),
+            Span::styled(
+                format!("{}{}", if form.field == 3 { "< " } else { "  " }, form.samp_version.label()),
+                if form.field == 3 { theme::key() } else { theme::text() },
+            ),
+            Span::styled(if form.field == 3 { " >" } else { "" }, theme::key()),
+        ]),
         Line::raw(""),
         Line::from(vec![
             Span::raw(format!("{:<12}", "")),
-            Span::styled("[ Join ]", if form.field == 3 { theme::tab_active() } else { theme::key() }),
+            Span::styled("[ Join ]", if form.field == 4 { theme::tab_active() } else { theme::key() }),
         ]),
     ];
     if let Some(e) = &form.error {
         lines.push(Line::from(Span::styled(e.clone(), theme::err())));
     } else {
-        lines.push(Line::from(Span::styled("Enter join  Tab next field  Esc cancel", theme::dim())));
+        lines.push(Line::from(Span::styled("Enter join  Tab next field  v or ←/→ version  Esc cancel", theme::dim())));
     }
     f.render_widget(Paragraph::new(lines), inner);
     match form.field {
-        0 => set_cursor(f, inner, 3, 12, &form.nickname),
-        1 => set_cursor(f, inner, 4, 12, &form.password),
+        0 => set_cursor(f, inner, 2, 12, &form.nickname),
+        1 => set_cursor(f, inner, 3, 12, &form.password),
         _ => {}
     }
 }

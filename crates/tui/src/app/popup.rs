@@ -31,13 +31,13 @@ pub struct JoinForm {
     pub password: Input,
     pub remember_password: bool,
     pub samp_version: SampVersion,
-    // Field order: nickname, password, remember password, join button.
+    // Field order: nickname, password, remember password, SA-MP version, join button.
     pub field: usize,
     pub error: Option<String>,
 }
 
 impl JoinForm {
-    pub const FIELDS: usize = 4;
+    pub const FIELDS: usize = 5;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
