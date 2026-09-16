@@ -253,3 +253,21 @@ async fn remembered_password_is_encrypted_on_disk_and_restored() {
     tui.send(b"q");
     assert!(tui.finish().success());
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn mouse_clicks() {
+    let w = world().await;
+    let mut tui = Tui::spawn(&w.env, &[]);
+    tui.wait_for("Bravo Roleplay");
+    // SGR mouse press/release, 1-based: row 5 is the second server line
+    tui.send(b"\x1b[<0;12;5M\x1b[<0;12;5m");
+    tui.wait_for("Bravo Roleplay  127.0.0.1");
+    tui.send(b"\x1b[<0;12;5M\x1b[<0;12;5m");
+    let screen = tui.wait_for("Join server");
+    assert!(screen.contains("server has a password"), "{screen}");
+    tui.send(b"\x1b");
+    tui.send(b"\x1b[<64;12;5M");
+    tui.wait_for("Alpha Freeroam  127.0.0.1");
+    tui.send(b"q");
+    assert!(tui.finish().success());
+}

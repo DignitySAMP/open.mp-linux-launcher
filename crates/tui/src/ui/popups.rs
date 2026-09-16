@@ -262,7 +262,7 @@ const HELP: &[(&str, &str)] = &[
 ];
 
 fn draw_help(f: &mut Frame, area: Rect) {
-    let rect = centered(area, 72, (HELP.len() + 4) as u16);
+    let rect = centered(area, 72, (HELP.len() + 5) as u16);
     let inner = frame(f, rect, "Keys", false);
     let mut lines: Vec<Line> = HELP
         .iter()
@@ -272,6 +272,7 @@ fn draw_help(f: &mut Frame, area: Rect) {
         .collect();
     lines.push(Line::raw(""));
     lines.push(Line::from(Span::styled(" ◆ open.mp server   ○ SA-MP server   ★ favorite   🔒 password", theme::dim())));
+    lines.push(Line::from(Span::styled(" mouse: click selects, double-click joins, wheel scrolls", theme::dim())));
     f.render_widget(Paragraph::new(lines), inner);
 }
 

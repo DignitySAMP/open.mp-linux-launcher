@@ -30,10 +30,15 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     popups::draw(f, app, area);
 }
 
-fn draw_header(f: &mut Frame, app: &App, area: Rect) {
+fn draw_header(f: &mut Frame, app: &mut App, area: Rect) {
     let mut spans = vec![Span::styled(" omp-tui ", theme::title())];
+    let mut x = area.x + 9;
+    app.hit.tabs.clear();
     for (i, kind) in ListKind::ALL.iter().enumerate() {
         let label = format!(" {} {} ({}) ", i + 1, kind.title(), app.list_len(*kind));
+        let width = label.chars().count() as u16;
+        app.hit.tabs.push((Rect::new(x, area.y, width, 1), *kind));
+        x += width + 1;
         let style = if *kind == app.tab { theme::tab_active() } else { theme::tab_inactive() };
         spans.push(Span::styled(label, style));
         spans.push(Span::raw(" "));
@@ -43,6 +48,8 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
     } else {
         String::from("/ search")
     };
+    x += 2;
+    app.hit.search = Rect::new(x, area.y, search_text.chars().count().max(8) as u16, 1);
     spans.push(Span::styled("  ", theme::dim()));
     spans.push(Span::styled(search_text, if app.search_editing { theme::key() } else { theme::dim() }));
     let active = app.filters.active_count();
@@ -73,17 +80,8 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
     }
     f.render_widget(Paragraph::new(Line::from(spans)), area);
     if app.search_editing {
-        let x = area.x
-            + 9
-            + ListKind::ALL
-                .iter()
-                .enumerate()
-                .map(|(i, k)| (format!(" {} {} ({}) ", i + 1, k.title(), app.list_len(*k)).chars().count() + 1) as u16)
-                .sum::<u16>()
-            + 2
-            + 1
-            + app.search.cursor() as u16;
-        f.set_cursor_position((x.min(area.right().saturating_sub(1)), area.y));
+        let cx = x + 1 + app.search.cursor() as u16;
+        f.set_cursor_position((cx.min(area.right().saturating_sub(1)), area.y));
     }
 }
 
@@ -101,6 +99,8 @@ fn draw_list(f: &mut Frame, app: &mut App, area: Rect) {
         .border_style(theme::border_focus());
     let inner = block.inner(area);
     f.render_widget(block, area);
+    app.hit.list = area;
+    app.hit.rows = Rect { y: inner.y + 1, height: inner.height.saturating_sub(1), ..inner };
     if app.view.is_empty() {
         let text = if let Some(e) = &app.api_error {
             format!("master list unavailable: {e}\npress r to retry")

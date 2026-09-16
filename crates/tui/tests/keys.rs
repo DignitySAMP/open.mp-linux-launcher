@@ -1,7 +1,7 @@
 mod common;
 
 use common::{fixture_servers, harness, server};
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use omp_tui::app::App;
 use omp_tui::app::popup::Popup;
 use omp_tui::app::tasks::AppEvent;
@@ -769,4 +769,60 @@ async fn joining_with_a_missing_client_version_fetches_it_first() {
         other => panic!("{other:?}"),
     }
     unsafe { std::env::remove_var("OMPTUI_ASSETS_URL") };
+}
+
+fn mouse(app: &mut App, kind: MouseEventKind, column: u16, row: u16) {
+    app.handle_mouse(MouseEvent { kind, column, row, modifiers: KeyModifiers::NONE });
+}
+
+#[tokio::test]
+async fn mouse_selects_rows_tabs_and_search() {
+    let mut h = app_with_list().await;
+    render(&mut h.app, 120, 32);
+    let rows = h.app.hit.rows;
+    assert!(rows.height > 5);
+    let click = MouseEventKind::Down(MouseButton::Left);
+    mouse(&mut h.app, click, rows.x + 3, rows.y + 2);
+    assert_eq!(h.app.table.selected(), Some(2));
+    assert_eq!(selected_name(&h.app), "Charlie Deathmatch");
+    mouse(&mut h.app, click, rows.x + 3, rows.y + 2);
+    assert!(matches!(h.app.popup, Some(Popup::Join(_))));
+    mouse(&mut h.app, click, rows.x + 3, rows.y);
+    assert!(matches!(h.app.popup, Some(Popup::Join(_))), "clicks are ignored while a popup is open");
+    key(&mut h.app, KeyCode::Esc);
+    mouse(&mut h.app, click, rows.x + 3, rows.y + rows.height - 1);
+    assert_eq!(h.app.table.selected(), Some(usize::from(rows.height) - 1));
+    mouse(&mut h.app, MouseEventKind::ScrollDown, rows.x, rows.y);
+    mouse(&mut h.app, MouseEventKind::ScrollDown, rows.x, rows.y);
+    assert_eq!(h.app.table.selected(), Some(usize::from(rows.height) + 1));
+    mouse(&mut h.app, MouseEventKind::ScrollUp, rows.x, rows.y);
+    assert_eq!(h.app.table.selected(), Some(usize::from(rows.height)));
+    render(&mut h.app, 120, 32);
+    assert!(h.app.table.offset() > 0);
+    mouse(&mut h.app, click, rows.x + 3, rows.y);
+    assert_eq!(h.app.table.selected(), Some(h.app.table.offset()));
+
+    let (tab, kind) = h.app.hit.tabs[3];
+    mouse(&mut h.app, click, tab.x + 1, tab.y);
+    assert_eq!(h.app.tab, kind);
+    assert_eq!(h.app.tab, ListKind::Recent);
+    render(&mut h.app, 120, 32);
+    mouse(&mut h.app, click, rows.x + 3, rows.y + 1);
+    assert_eq!(h.app.table.selected(), None, "empty list");
+    let (tab, _) = h.app.hit.tabs[1];
+    mouse(&mut h.app, click, tab.x, tab.y);
+    assert_eq!(h.app.tab, ListKind::Internet);
+    let search = h.app.hit.search;
+    mouse(&mut h.app, click, search.x + 1, search.y);
+    assert!(h.app.search_editing);
+    type_str(&mut h.app, "bravo");
+    assert_eq!(h.app.view.len(), 1);
+    render(&mut h.app, 120, 32);
+    mouse(&mut h.app, click, rows.x + 3, rows.y);
+    assert!(!h.app.search_editing);
+    assert_eq!(h.app.filters.query, "bravo");
+    assert_eq!(selected_name(&h.app), "Bravo Roleplay");
+    mouse(&mut h.app, click, 0, 0);
+    mouse(&mut h.app, MouseEventKind::Moved, rows.x, rows.y);
+    assert_eq!(selected_name(&h.app), "Bravo Roleplay");
 }

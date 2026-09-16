@@ -1,6 +1,7 @@
 mod events;
 mod join;
 mod keys;
+mod mouse;
 pub mod popup;
 mod settings;
 pub mod tasks;
@@ -17,10 +18,11 @@ use omptui_core::validation::validate_nickname;
 use omptui_core::wine::{Prefix, WineEnv, discover_wine};
 use omptui_core::{ListKind, Server, ServerAddr, UNREACHABLE_PING};
 use popup::*;
+use ratatui::layout::Rect;
 use ratatui::widgets::TableState;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::path::PathBuf;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tasks::{AppEvent, Services};
 
 pub const PING_HISTORY: usize = 120;
@@ -33,6 +35,16 @@ pub struct StatusLine {
     pub text: String,
     pub error: bool,
     pub at: Instant,
+}
+
+// Where the last frame put the clickable parts.
+#[derive(Debug, Default)]
+pub struct HitAreas {
+    pub tabs: Vec<(Rect, ListKind)>,
+    pub search: Rect,
+    pub list: Rect,
+    // table rows without the header line
+    pub rows: Rect,
 }
 
 pub struct App {
@@ -61,6 +73,8 @@ pub struct App {
     pub last_launch: Option<LaunchState>,
     pub pending_link: Option<DeepLink>,
     pub languages: BTreeMap<String, usize>,
+    pub hit: HitAreas,
+    last_click: Option<(usize, Instant)>,
     queried_once: bool,
     after_message: Option<Popup>,
 }
@@ -95,6 +109,8 @@ impl App {
             last_launch: None,
             pending_link: None,
             languages: BTreeMap::new(),
+            hit: HitAreas::default(),
+            last_click: None,
             queried_once: false,
             after_message: None,
         };

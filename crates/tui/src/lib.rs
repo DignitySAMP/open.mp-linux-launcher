@@ -9,7 +9,8 @@ pub mod ui;
 
 use app::App;
 use app::tasks::{AppEvent, Services};
-use crossterm::event::{Event, EventStream, KeyEventKind};
+use crossterm::event::{DisableMouseCapture, EnableMouseCapture, Event, EventStream, KeyEventKind};
+use crossterm::execute;
 use futures::StreamExt;
 use omptui_core::api::{ApiClient, DEFAULT_BASE_URL};
 use omptui_core::query::{Querier, QueryConfig};
@@ -51,7 +52,15 @@ pub async fn build_services(api_base: &str, tx: mpsc::UnboundedSender<AppEvent>)
 
 pub async fn run_tui(mut app: App, rx: mpsc::UnboundedReceiver<AppEvent>) -> std::io::Result<()> {
     let mut terminal = ratatui::try_init()?;
+    let _ = execute!(std::io::stdout(), EnableMouseCapture);
+    // ratatui's hook restores the screen but not this
+    let hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let _ = execute!(std::io::stdout(), DisableMouseCapture);
+        hook(info);
+    }));
     let result = event_loop(&mut terminal, &mut app, rx).await;
+    let _ = execute!(std::io::stdout(), DisableMouseCapture);
     ratatui::restore();
     app.save_all();
     result
@@ -71,6 +80,7 @@ async fn event_loop(
         tokio::select! {
             ev = keys.next() => match ev {
                 Some(Ok(Event::Key(k))) if k.kind != KeyEventKind::Release => app.handle_key(k),
+                Some(Ok(Event::Mouse(m))) => app.handle_mouse(m),
                 Some(Ok(_)) => {}
                 Some(Err(e)) => return Err(e),
                 None => return Ok(()),
