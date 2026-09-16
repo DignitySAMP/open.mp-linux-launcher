@@ -229,10 +229,14 @@ fn draw_details(f: &mut Frame, app: &App, area: Rect) {
         }
         lines.push(kv("overrides", parts.join(", ")));
     }
-    if let Some(e) = &s.extra {
-        if !e.discord.is_empty() {
-            lines.push(kv("discord", e.discord.clone()));
+    for (label, url, key) in [("website", s.website(), "w"), ("discord", s.discord(), "D")] {
+        if let Some(url) = url {
+            let mut line = kv(label, url);
+            line.push_span(Span::styled(format!("  ({key})"), theme::key()));
+            lines.push(line);
         }
+    }
+    if let Some(e) = &s.extra {
         if !e.light_banner.is_empty() {
             lines.push(kv("banner", e.light_banner.clone()));
         }
@@ -241,8 +245,12 @@ fn draw_details(f: &mut Frame, app: &App, area: Rect) {
         }
     }
     if !s.rules.is_empty() {
-        let rules: Vec<String> =
-            s.rules.iter().filter(|(k, _)| *k != "version").map(|(k, v)| format!("{k}={v}")).collect();
+        let rules: Vec<String> = s
+            .rules
+            .iter()
+            .filter(|(k, _)| !["version", "weburl"].contains(&k.as_str()))
+            .map(|(k, v)| format!("{k}={v}"))
+            .collect();
         lines.push(Line::from(vec![
             Span::styled(format!("{:<10}", "rules"), theme::dim()),
             Span::styled(rules.join("  "), theme::text()),

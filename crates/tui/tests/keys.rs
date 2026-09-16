@@ -826,3 +826,12 @@ async fn mouse_selects_rows_tabs_and_search() {
     mouse(&mut h.app, MouseEventKind::Moved, rows.x, rows.y);
     assert_eq!(selected_name(&h.app), "Bravo Roleplay");
 }
+
+#[tokio::test]
+async fn link_keys_report_missing_links() {
+    let mut h = app_with_list().await;
+    key(&mut h.app, KeyCode::Char('w'));
+    assert_eq!(h.app.status.as_ref().unwrap().text, "no website for this server");
+    key(&mut h.app, KeyCode::Char('D'));
+    assert_eq!(h.app.status.as_ref().unwrap().text, "no Discord link for this server");
+}

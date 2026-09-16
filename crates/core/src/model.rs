@@ -133,6 +133,31 @@ impl Server {
     pub fn display_name(&self) -> String {
         if self.info.hostname.is_empty() { self.address_text() } else { self.info.hostname.clone() }
     }
+
+    // weburl is the rule SA-MP servers set for this; the others turn up in the wild.
+    pub fn website(&self) -> Option<String> {
+        ["weburl", "website", "url"].iter().find_map(|k| self.rules.get(*k)).and_then(|v| http_link(v))
+    }
+
+    pub fn discord(&self) -> Option<String> {
+        self.extra.as_ref().and_then(|e| http_link(&e.discord))
+    }
+}
+
+// Rules are free text, so only http(s) links go to the browser. A bare "example.com" gets https://.
+pub fn http_link(raw: &str) -> Option<String> {
+    let s = raw.trim();
+    if s.is_empty() || s.chars().any(char::is_whitespace) {
+        return None;
+    }
+    let lower = s.to_ascii_lowercase();
+    if lower.starts_with("http://") || lower.starts_with("https://") {
+        return Some(s.to_owned());
+    }
+    if s.contains("://") || !s.contains('.') {
+        return None;
+    }
+    Some(format!("https://{s}"))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -169,6 +194,24 @@ mod tests {
         assert_eq!("host:7777".parse::<ServerAddr>(), Err(AddrParseError::Ip));
         assert_eq!("1.2.3.4:0".parse::<ServerAddr>(), Err(AddrParseError::Port));
         assert_eq!("1.2.3.4:70000".parse::<ServerAddr>(), Err(AddrParseError::Port));
+    }
+
+    #[test]
+    fn links_from_rules_and_extra() {
+        assert_eq!(http_link("www.example.com/forum"), Some("https://www.example.com/forum".into()));
+        assert_eq!(http_link(" HTTP://x.y "), Some("HTTP://x.y".into()));
+        assert_eq!(http_link("discord.gg/abc"), Some("https://discord.gg/abc".into()));
+        assert_eq!(http_link("none"), None);
+        assert_eq!(http_link("-"), None);
+        assert_eq!(http_link("file:///etc/passwd"), None);
+        assert_eq!(http_link("two words.com"), None);
+        let mut s = Server::with_addr("1.2.3.4:7777".parse().unwrap());
+        assert_eq!(s.website(), None);
+        assert_eq!(s.discord(), None);
+        s.rules.insert("weburl".into(), "example.com".into());
+        s.extra = Some(ExtraInfo { discord: "https://discord.gg/abc".into(), ..Default::default() });
+        assert_eq!(s.website().as_deref(), Some("https://example.com"));
+        assert_eq!(s.discord().as_deref(), Some("https://discord.gg/abc"));
     }
 
     #[test]

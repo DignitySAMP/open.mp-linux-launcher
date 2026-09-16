@@ -58,6 +58,7 @@ async fn loaded_app() -> common::Harness {
             rules: Some(vec![
                 ("mapname".into(), "San Andreas".into()),
                 ("weather".into(), "10".into()),
+                ("weburl".into(), "www.example.com".into()),
                 ("version".into(), "omp 1.5.8.3079".into()),
             ]),
             extra: Some(omptui_core::ExtraInfo { discord: "https://discord.gg/example".into(), ..Default::default() }),

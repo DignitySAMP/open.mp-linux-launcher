@@ -235,6 +235,17 @@ impl App {
         self.popup = Some(Popup::Message { title: title.into(), lines, error });
     }
 
+    pub(super) fn open_link(&mut self, what: &str, url: Option<String>) {
+        let Some(url) = url else {
+            self.status(format!("no {what} for this server"), false);
+            return;
+        };
+        match crate::desktop::open_url(&url) {
+            Ok(()) => self.status(format!("opened {url}"), false),
+            Err(e) => self.status(format!("could not open {url}: {e}"), true),
+        }
+    }
+
     pub fn save_all(&mut self) {
         self.settings.filters = self.filters.clone();
         if let Err(e) = self.settings.save(&self.paths) {

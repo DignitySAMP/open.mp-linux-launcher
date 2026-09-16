@@ -1,7 +1,7 @@
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 pub const APP_DESKTOP: &str = "omp-tui.desktop";
 pub const URL_DESKTOP: &str = "omp-tui-url.desktop";
@@ -63,6 +63,13 @@ pub fn install_binary() -> io::Result<PathBuf> {
     fs::copy(&src, &tmp)?;
     fs::rename(&tmp, &dst)?;
     Ok(dst)
+}
+
+pub fn open_url(url: &str) -> io::Result<()> {
+    let mut child =
+        Command::new("xdg-open").arg(url).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).spawn()?;
+    std::thread::spawn(move || child.wait());
+    Ok(())
 }
 
 fn quote(s: &str) -> String {

@@ -103,6 +103,14 @@ impl App {
                     self.status(format!("copied {text} ({how})"), false);
                 }
             }
+            KeyCode::Char('w') => {
+                let url = self.selected_server().and_then(Server::website);
+                self.open_link("website", url);
+            }
+            KeyCode::Char('D') => {
+                let url = self.selected_server().and_then(Server::discord);
+                self.open_link("Discord link", url);
+            }
             KeyCode::Char('p') => self.open_server_settings(),
             KeyCode::Char(',') => self.open_settings(),
             KeyCode::Char('x') => {

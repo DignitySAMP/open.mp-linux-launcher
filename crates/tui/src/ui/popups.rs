@@ -253,6 +253,7 @@ const HELP: &[(&str, &str)] = &[
     ("s / S", "cycle sort key / flip direction"),
     ("r / R", "refresh master list / re-query servers"),
     ("c", "copy address to clipboard"),
+    ("w / D", "open the server's website / Discord"),
     ("p", "per-server nickname, password, SA-MP version"),
     ("x", "clear recently joined"),
     ("l", "show the last launch log"),
