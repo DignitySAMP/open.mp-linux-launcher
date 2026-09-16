@@ -1,7 +1,9 @@
 //! Same flags as the official launcher (-h host, -p port, -P password, -n name, -g gamepath,
 //! --no-omp) plus the Linux bits. -h is taken by host, so help is --help only.
 
+use clap::builder::PossibleValuesParser;
 use clap::{ArgAction, Parser};
+use omptui_core::resources::SampVersion;
 use std::path::PathBuf;
 
 #[derive(Debug, Parser, Clone, Default)]
@@ -45,8 +47,8 @@ pub struct Cli {
     #[arg(long)]
     pub no_omp: bool,
 
-    /// SA-MP client version: 037R1 037R2 037R3 037R31 037R4 037R5 03DL custom.
-    #[arg(long)]
+    /// SA-MP client version.
+    #[arg(long, value_parser = PossibleValuesParser::new(SampVersion::ALL.map(SampVersion::id)), ignore_case = true)]
     pub samp_version: Option<String>,
 
     /// Wine binary.
@@ -114,6 +116,13 @@ mod tests {
         let c = Cli::parse_from(["omp-tui", "omp://1.2.3.4:7777"]);
         assert!(!c.is_direct_launch());
         assert_eq!(c.link.as_deref(), Some("omp://1.2.3.4:7777"));
+    }
+
+    #[test]
+    fn samp_version_is_checked_but_not_case_sensitive() {
+        let c = Cli::parse_from(["omp-tui", "--samp-version", "03dl"]);
+        assert_eq!(SampVersion::from_id(c.samp_version.as_deref().unwrap()), Some(SampVersion::DL));
+        assert!(Cli::try_parse_from(["omp-tui", "--samp-version", "037R9"]).is_err());
     }
 
     #[test]
