@@ -80,7 +80,7 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(Paragraph::new(Line::from(spans)), area);
     if app.search_editing {
         let x = area.x
-            + 10
+            + 9
             + ListKind::ALL
                 .iter()
                 .enumerate()
