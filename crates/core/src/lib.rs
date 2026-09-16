@@ -10,6 +10,7 @@ pub mod query;
 pub mod resources;
 pub mod secrets;
 pub mod store;
+pub mod update;
 pub mod validation;
 pub mod wine;
 

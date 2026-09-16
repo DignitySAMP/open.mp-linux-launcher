@@ -109,6 +109,11 @@ async fn world() -> World {
         .respond_with(ResponseTemplate::new(200).set_body_raw(json, "application/json"))
         .mount(&mock)
         .await;
+    Mock::given(method("GET"))
+        .and(path("/releases/latest"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(r#"{"tag_name":"v9.9.9"}"#, "application/json"))
+        .mount(&mock)
+        .await;
     let root = tempfile::tempdir().unwrap();
     let paths = Paths::under(root.path());
     let game = root.path().join("game");
@@ -127,6 +132,7 @@ async fn world() -> World {
     let env = vec![
         ("OMPTUI_API_URL", mock.uri()),
         ("OMPTUI_ASSETS_URL", mock.uri()),
+        ("OMPTUI_UPDATE_URL", format!("{}/releases/latest", mock.uri())),
         ("OMPTUI_CONFIG_DIR", paths.config_dir.to_string_lossy().into_owned()),
         ("OMPTUI_DATA_DIR", paths.data_dir.to_string_lossy().into_owned()),
         ("OMPTUI_STATE_DIR", paths.state_dir.to_string_lossy().into_owned()),
@@ -255,10 +261,11 @@ async fn remembered_password_is_encrypted_on_disk_and_restored() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn mouse_clicks() {
+async fn mouse_clicks_and_update_notice() {
     let w = world().await;
     let mut tui = Tui::spawn(&w.env, &[]);
     tui.wait_for("Bravo Roleplay");
+    tui.wait_for("v9.9.9 available");
     // SGR mouse press/release, 1-based: row 5 is the second server line
     tui.send(b"\x1b[<0;12;5M\x1b[<0;12;5m");
     tui.wait_for("Bravo Roleplay  127.0.0.1");

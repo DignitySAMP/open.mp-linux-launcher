@@ -95,6 +95,7 @@ pub struct Settings {
     pub query_lists: bool,
     // seconds between master list reloads, 0 = only on r
     pub auto_refresh_secs: u32,
+    pub check_updates: bool,
 }
 
 impl Default for Settings {
@@ -117,6 +118,7 @@ impl Default for Settings {
             filters: Filters::default(),
             query_lists: true,
             auto_refresh_secs: 0,
+            check_updates: true,
         }
     }
 }

@@ -71,6 +71,7 @@ pub enum SettingsRow {
     QuitAfterLaunch,
     QueryLists,
     AutoRefresh,
+    CheckUpdates,
     Terminal,
     ActionCheckFiles,
     ActionDownloadClient,
@@ -83,7 +84,7 @@ pub enum SettingsRow {
 }
 
 impl SettingsRow {
-    pub const ALL: [SettingsRow; 21] = [
+    pub const ALL: [SettingsRow; 22] = [
         SettingsRow::Nickname,
         SettingsRow::GameDir,
         SettingsRow::GameExe,
@@ -96,6 +97,7 @@ impl SettingsRow {
         SettingsRow::QuitAfterLaunch,
         SettingsRow::QueryLists,
         SettingsRow::AutoRefresh,
+        SettingsRow::CheckUpdates,
         SettingsRow::Terminal,
         SettingsRow::ActionCheckFiles,
         SettingsRow::ActionDownloadClient,
@@ -121,6 +123,7 @@ impl SettingsRow {
             SettingsRow::QuitAfterLaunch => "Quit after launching",
             SettingsRow::QueryLists => "Query servers in lists (ping/players)",
             SettingsRow::AutoRefresh => "Reload the master list every",
+            SettingsRow::CheckUpdates => "Check for a new release at start",
             SettingsRow::Terminal => "Terminal for desktop entries",
             SettingsRow::ActionCheckFiles => "▶ Check client files and game",
             SettingsRow::ActionDownloadClient => "▶ Download client files from open.mp",

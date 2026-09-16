@@ -74,6 +74,7 @@ pub struct App {
     pub pending_link: Option<DeepLink>,
     pub languages: BTreeMap<String, usize>,
     pub versions: BTreeMap<String, usize>,
+    pub update: Option<String>,
     pub hit: HitAreas,
     last_click: Option<(usize, Instant)>,
     queried_once: bool,
@@ -111,6 +112,7 @@ impl App {
             pending_link: None,
             languages: BTreeMap::new(),
             versions: BTreeMap::new(),
+            update: None,
             hit: HitAreas::default(),
             last_click: None,
             queried_once: false,
@@ -261,6 +263,9 @@ impl App {
     pub fn start(&mut self) {
         self.loading = true;
         self.svc.fetch_api();
+        if self.settings.check_updates {
+            self.svc.check_update(crate::update_url());
+        }
         if self.settings.query_lists {
             let addrs: Vec<ServerAddr> =
                 self.lists.favorites.iter().chain(self.lists.recent.iter()).filter_map(|s| s.addr).collect();

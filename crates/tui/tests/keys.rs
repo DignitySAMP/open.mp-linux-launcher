@@ -467,6 +467,10 @@ async fn settings_popup_text_editing_toggles_and_actions() {
     assert_eq!(h.app.settings.auto_refresh_secs, 0);
     key(&mut h.app, KeyCode::Down);
     key(&mut h.app, KeyCode::Enter);
+    assert!(!h.app.settings.check_updates);
+    assert!(!Settings::load(&h.app.paths).unwrap().check_updates);
+    key(&mut h.app, KeyCode::Down);
+    key(&mut h.app, KeyCode::Enter);
     type_str(&mut h.app, "kitty");
     key(&mut h.app, KeyCode::Enter);
     assert_eq!(h.app.settings.terminal.as_deref(), Some("kitty"));
@@ -864,7 +868,7 @@ async fn link_keys_report_missing_links() {
 }
 
 #[tokio::test]
-async fn auto_refresh_reloads_the_list() {
+async fn auto_refresh_and_update_notice() {
     let mut h = app_with_list().await;
     h.app.settings.query_lists = false;
     h.app.handle_event(AppEvent::Tick);
@@ -874,4 +878,7 @@ async fn auto_refresh_reloads_the_list() {
     assert!(h.app.loading);
     pump_until(&mut h, |e| matches!(e, AppEvent::ApiLoaded(Err(_)))).await;
     assert!(!h.app.loading);
+    h.app.handle_event(AppEvent::UpdateAvailable("9.9.9".into()));
+    let screen = render(&mut h.app, 120, 32);
+    assert!(screen.lines().next().unwrap().contains("v9.9.9 available"), "{screen}");
 }

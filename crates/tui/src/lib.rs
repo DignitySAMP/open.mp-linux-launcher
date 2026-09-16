@@ -41,6 +41,10 @@ pub fn assets_url() -> String {
     std::env::var("OMPTUI_ASSETS_URL").unwrap_or_else(|_| omptui_core::download::DEFAULT_ASSETS_URL.to_string())
 }
 
+pub fn update_url() -> String {
+    std::env::var("OMPTUI_UPDATE_URL").unwrap_or_else(|_| omptui_core::update::RELEASES_URL.to_string())
+}
+
 pub async fn build_services(api_base: &str, tx: mpsc::UnboundedSender<AppEvent>) -> std::io::Result<Services> {
     let mut cfg = QueryConfig::default();
     if let Some(ms) = std::env::var("OMPTUI_QUERY_TIMEOUT_MS").ok().and_then(|v| v.parse().ok()) {

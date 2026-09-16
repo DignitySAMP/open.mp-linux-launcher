@@ -34,6 +34,7 @@ impl App {
                 s if s < 60 => format!("{s}s"),
                 s => format!("{} min", s / 60),
             },
+            SettingsRow::CheckUpdates => onoff(self.settings.check_updates),
             SettingsRow::WineBinary if self.settings.wine_binary.is_none() => discover_wine()
                 .into_iter()
                 .next()
@@ -179,6 +180,10 @@ impl App {
                         let n = REFRESH_STEPS.len();
                         self.settings.auto_refresh_secs =
                             REFRESH_STEPS[if back { (i + n - 1) % n } else { (i + 1) % n }];
+                        self.save_all();
+                    }
+                    SettingsRow::CheckUpdates => {
+                        self.settings.check_updates = !self.settings.check_updates;
                         self.save_all();
                     }
                     r if r.is_action() && key.code == KeyCode::Enter => {

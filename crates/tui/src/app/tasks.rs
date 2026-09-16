@@ -18,6 +18,7 @@ pub enum AppEvent {
     Resolved { result: Result<(ServerAddr, String), String>, join: bool },
     ImportedFavorites(Result<Vec<Server>, String>),
     TaskDone { title: String, result: Result<Vec<String>, String> },
+    UpdateAvailable(String),
     Tick,
 }
 
@@ -38,6 +39,19 @@ impl Services {
         tokio::spawn(async move {
             let r = api.servers().await.map_err(|e| e.to_string());
             let _ = tx.send(AppEvent::ApiLoaded(r));
+        });
+    }
+
+    pub fn check_update(&self, url: String) {
+        let tx = self.tx.clone();
+        tokio::spawn(async move {
+            match omptui_core::update::latest_version(&url).await {
+                Ok(v) if omptui_core::update::is_newer(&v, env!("CARGO_PKG_VERSION")) => {
+                    let _ = tx.send(AppEvent::UpdateAvailable(v));
+                }
+                Ok(v) => tracing::debug!("latest release {v}, no update"),
+                Err(e) => tracing::debug!("update check failed: {e}"),
+            }
         });
     }
 

@@ -25,6 +25,7 @@ impl App {
                 Ok(lines) => self.message(title, lines, false),
                 Err(e) => self.message(title, e.lines().map(str::to_owned).collect(), true),
             },
+            AppEvent::UpdateAvailable(v) => self.update = Some(v),
             AppEvent::Tick => self.on_tick(),
         }
     }

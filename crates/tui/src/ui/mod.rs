@@ -52,6 +52,9 @@ fn draw_header(f: &mut Frame, app: &mut App, area: Rect) {
     app.hit.search = Rect::new(x, area.y, search_text.chars().count().max(8) as u16, 1);
     spans.push(Span::styled("  ", theme::dim()));
     spans.push(Span::styled(search_text, if app.search_editing { theme::key() } else { theme::dim() }));
+    if let Some(v) = &app.update {
+        spans.push(Span::styled(format!("  v{v} available"), theme::warn()));
+    }
     let active = app.filters.active_count();
     if active > 0 || app.filters.sort != omptui_core::filter::SortKey::None {
         let mut parts = Vec::new();
