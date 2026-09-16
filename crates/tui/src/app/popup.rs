@@ -70,6 +70,7 @@ pub enum SettingsRow {
     Suspended,
     QuitAfterLaunch,
     QueryLists,
+    AutoRefresh,
     Terminal,
     ActionCheckFiles,
     ActionDownloadClient,
@@ -82,7 +83,7 @@ pub enum SettingsRow {
 }
 
 impl SettingsRow {
-    pub const ALL: [SettingsRow; 20] = [
+    pub const ALL: [SettingsRow; 21] = [
         SettingsRow::Nickname,
         SettingsRow::GameDir,
         SettingsRow::GameExe,
@@ -94,6 +95,7 @@ impl SettingsRow {
         SettingsRow::Suspended,
         SettingsRow::QuitAfterLaunch,
         SettingsRow::QueryLists,
+        SettingsRow::AutoRefresh,
         SettingsRow::Terminal,
         SettingsRow::ActionCheckFiles,
         SettingsRow::ActionDownloadClient,
@@ -118,6 +120,7 @@ impl SettingsRow {
             SettingsRow::Suspended => "Start game suspended, inject, resume",
             SettingsRow::QuitAfterLaunch => "Quit after launching",
             SettingsRow::QueryLists => "Query servers in lists (ping/players)",
+            SettingsRow::AutoRefresh => "Reload the master list every",
             SettingsRow::Terminal => "Terminal for desktop entries",
             SettingsRow::ActionCheckFiles => "▶ Check client files and game",
             SettingsRow::ActionDownloadClient => "▶ Download client files from open.mp",

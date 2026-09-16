@@ -240,6 +240,11 @@ impl App {
                 self.status = None;
             }
         }
+        let every = self.settings.auto_refresh_secs;
+        if every > 0 && self.ticks.is_multiple_of(every) && !self.loading {
+            self.loading = true;
+            self.svc.fetch_api();
+        }
         if let Some(addr) = self.selected {
             let paused = matches!(self.popup, Some(Popup::Settings(_)) | Some(Popup::Help));
             if !paused {

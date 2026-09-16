@@ -1,5 +1,7 @@
 use super::*;
 
+const REFRESH_STEPS: [u32; 6] = [0, 30, 60, 120, 300, 600];
+
 impl App {
     pub(super) fn open_settings(&mut self) {
         self.popup = Some(Popup::Settings(SettingsForm { cursor: 0, editing: None, message: None }));
@@ -27,6 +29,11 @@ impl App {
             SettingsRow::Suspended => onoff(self.settings.create_suspended),
             SettingsRow::QuitAfterLaunch => onoff(self.settings.quit_after_launch),
             SettingsRow::QueryLists => onoff(self.settings.query_lists),
+            SettingsRow::AutoRefresh => match self.settings.auto_refresh_secs {
+                0 => "off".to_string(),
+                s if s < 60 => format!("{s}s"),
+                s => format!("{} min", s / 60),
+            },
             SettingsRow::WineBinary if self.settings.wine_binary.is_none() => discover_wine()
                 .into_iter()
                 .next()
@@ -165,6 +172,13 @@ impl App {
                     }
                     SettingsRow::QueryLists => {
                         self.settings.query_lists = !self.settings.query_lists;
+                        self.save_all();
+                    }
+                    SettingsRow::AutoRefresh => {
+                        let i = REFRESH_STEPS.iter().position(|&s| s == self.settings.auto_refresh_secs).unwrap_or(0);
+                        let n = REFRESH_STEPS.len();
+                        self.settings.auto_refresh_secs =
+                            REFRESH_STEPS[if back { (i + n - 1) % n } else { (i + 1) % n }];
                         self.save_all();
                     }
                     r if r.is_action() && key.code == KeyCode::Enter => {

@@ -93,6 +93,8 @@ pub struct Settings {
     pub terminal: Option<String>,
     pub filters: Filters,
     pub query_lists: bool,
+    // seconds between master list reloads, 0 = only on r
+    pub auto_refresh_secs: u32,
 }
 
 impl Default for Settings {
@@ -114,6 +116,7 @@ impl Default for Settings {
             terminal: None,
             filters: Filters::default(),
             query_lists: true,
+            auto_refresh_secs: 0,
         }
     }
 }

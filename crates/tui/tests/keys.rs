@@ -458,6 +458,14 @@ async fn settings_popup_text_editing_toggles_and_actions() {
     key(&mut h.app, KeyCode::Enter);
     assert!(h.app.settings.query_lists);
     key(&mut h.app, KeyCode::Down);
+    key(&mut h.app, KeyCode::Right);
+    assert_eq!(h.app.settings.auto_refresh_secs, 30);
+    key(&mut h.app, KeyCode::Left);
+    key(&mut h.app, KeyCode::Left);
+    assert_eq!(h.app.settings.auto_refresh_secs, 600);
+    key(&mut h.app, KeyCode::Enter);
+    assert_eq!(h.app.settings.auto_refresh_secs, 0);
+    key(&mut h.app, KeyCode::Down);
     key(&mut h.app, KeyCode::Enter);
     type_str(&mut h.app, "kitty");
     key(&mut h.app, KeyCode::Enter);
@@ -853,4 +861,17 @@ async fn link_keys_report_missing_links() {
     assert_eq!(h.app.status.as_ref().unwrap().text, "no website for this server");
     key(&mut h.app, KeyCode::Char('D'));
     assert_eq!(h.app.status.as_ref().unwrap().text, "no Discord link for this server");
+}
+
+#[tokio::test]
+async fn auto_refresh_reloads_the_list() {
+    let mut h = app_with_list().await;
+    h.app.settings.query_lists = false;
+    h.app.handle_event(AppEvent::Tick);
+    assert!(!h.app.loading);
+    h.app.settings.auto_refresh_secs = 2;
+    h.app.handle_event(AppEvent::Tick);
+    assert!(h.app.loading);
+    pump_until(&mut h, |e| matches!(e, AppEvent::ApiLoaded(Err(_)))).await;
+    assert!(!h.app.loading);
 }
