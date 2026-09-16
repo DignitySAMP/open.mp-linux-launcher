@@ -109,8 +109,8 @@ mod tests {
         assert_eq!(a.decrypt("enc1:zz"), None);
         assert_eq!(a.decrypt("enc1:00"), None);
         let mut damaged = stored.clone();
-        damaged.pop();
-        damaged.push('0');
+        let last = damaged.pop().unwrap();
+        damaged.push(if last == '0' { '1' } else { '0' });
         assert_eq!(a.decrypt(&damaged), None);
     }
 
