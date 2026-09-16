@@ -210,15 +210,23 @@ impl App {
     }
 
     pub(super) fn open_filters(&mut self) {
-        let mut langs: Vec<(String, usize)> = self.languages.iter().map(|(k, v)| (k.clone(), *v)).collect();
-        langs.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
-        langs.truncate(40);
-        for l in &self.filters.languages {
-            if !langs.iter().any(|(n, _)| n == l) {
-                langs.push((l.clone(), 0));
+        // most common first; a checked value that has no servers right now stays listed
+        let counted = |counts: &BTreeMap<String, usize>, checked: &BTreeSet<String>| {
+            let mut v: Vec<(String, usize)> = counts.iter().map(|(k, v)| (k.clone(), *v)).collect();
+            v.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+            v.truncate(40);
+            for c in checked {
+                if !v.iter().any(|(n, _)| n == c) {
+                    v.push((c.clone(), 0));
+                }
             }
-        }
-        self.popup = Some(Popup::Filters(FilterForm { cursor: 0, languages: langs }));
+            v
+        };
+        self.popup = Some(Popup::Filters(FilterForm {
+            cursor: 0,
+            versions: counted(&self.versions, &self.filters.versions),
+            languages: counted(&self.languages, &self.filters.languages),
+        }));
     }
 
     pub(super) fn handle_popup_key(&mut self, key: KeyEvent) {
@@ -361,10 +369,16 @@ impl App {
                     }
                     4 => self.filters.dir = self.filters.dir.toggle(),
                     n => {
-                        if let Some((lang, _)) = form.languages.get(n - FilterForm::FIXED)
-                            && !self.filters.languages.remove(lang)
+                        let n = n - FilterForm::FIXED;
+                        let (set, item) = if n < form.versions.len() {
+                            (&mut self.filters.versions, form.versions.get(n))
+                        } else {
+                            (&mut self.filters.languages, form.languages.get(n - form.versions.len()))
+                        };
+                        if let Some((name, _)) = item
+                            && !set.remove(name)
                         {
-                            self.filters.languages.insert(lang.clone());
+                            set.insert(name.clone());
                         }
                     }
                 }

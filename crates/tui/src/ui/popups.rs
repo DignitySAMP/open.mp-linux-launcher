@@ -120,7 +120,7 @@ fn draw_prompt(f: &mut Frame, area: Rect, title: &str, hint: &str, input: &Input
 }
 
 fn draw_filters(f: &mut Frame, app: &App, area: Rect, form: &FilterForm) {
-    let rect = centered(area, 50, (form.rows() + 5).min(30) as u16);
+    let rect = centered(area, 50, (form.rows() + 5).min(34) as u16);
     let inner = frame(f, rect, "Filters & sort", false);
     let check = |b: bool| if b { "[x]" } else { "[ ]" };
     let fl = &app.filters;
@@ -131,11 +131,15 @@ fn draw_filters(f: &mut Frame, app: &App, area: Rect, form: &FilterForm) {
         format!("sort by: {}", sort_label(fl.sort, fl.dir)),
         format!("direction: {}", if fl.dir == omptui_core::filter::SortDir::Asc { "ascending" } else { "descending" }),
     ];
+    rows.extend(form.versions.iter().map(|(v, n)| format!("{} {v} ({n})", check(fl.versions.contains(v)))));
     rows.extend(form.languages.iter().map(|(l, n)| format!("{} {l} ({n})", check(fl.languages.contains(l)))));
     let mut display: Vec<Line> = Vec::new();
     let mut cursor_line = 0;
     for (i, text) in rows.iter().enumerate() {
         if i == FilterForm::FIXED {
+            display.push(Line::from(Span::styled(" versions", theme::dim())));
+        }
+        if i == FilterForm::FIXED + form.versions.len() {
             display.push(Line::from(Span::styled(" languages", theme::dim())));
         }
         if i == form.cursor {

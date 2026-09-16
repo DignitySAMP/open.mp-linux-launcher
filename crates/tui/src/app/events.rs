@@ -41,8 +41,10 @@ impl App {
             }
         }
         self.languages.clear();
+        self.versions.clear();
         for s in &self.internet {
             *self.languages.entry(normalize_language(&s.info.language)).or_default() += 1;
+            *self.versions.entry(version_family(&s.info.version)).or_default() += 1;
         }
         self.rebuild_view();
         if matches!(self.tab, ListKind::Internet | ListKind::Partners)

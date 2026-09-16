@@ -42,7 +42,9 @@ impl JoinForm {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FilterForm {
+    // Rows: three toggles, sort key, direction, then the versions and languages.
     pub cursor: usize,
+    pub versions: Vec<(String, usize)>,
     pub languages: Vec<(String, usize)>,
 }
 
@@ -50,7 +52,7 @@ impl FilterForm {
     pub const FIXED: usize = 5;
 
     pub fn rows(&self) -> usize {
-        Self::FIXED + self.languages.len()
+        Self::FIXED + self.versions.len() + self.languages.len()
     }
 }
 

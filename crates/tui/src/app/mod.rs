@@ -9,7 +9,7 @@ pub mod tasks;
 use crate::input::Input;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use omptui_core::deeplink::DeepLink;
-use omptui_core::filter::{Filters, SortKey, normalize_language};
+use omptui_core::filter::{Filters, SortKey, normalize_language, version_family};
 use omptui_core::launch::{HelperEvent, LaunchRequest};
 use omptui_core::query::{BasicResult, FullResult};
 use omptui_core::resources::{ClientFiles, FileState, SampVersion, inspect_game_exe};
@@ -20,7 +20,7 @@ use omptui_core::{ListKind, Server, ServerAddr, UNREACHABLE_PING};
 use popup::*;
 use ratatui::layout::Rect;
 use ratatui::widgets::TableState;
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use tasks::{AppEvent, Services};
@@ -73,6 +73,7 @@ pub struct App {
     pub last_launch: Option<LaunchState>,
     pub pending_link: Option<DeepLink>,
     pub languages: BTreeMap<String, usize>,
+    pub versions: BTreeMap<String, usize>,
     pub hit: HitAreas,
     last_click: Option<(usize, Instant)>,
     queried_once: bool,
@@ -109,6 +110,7 @@ impl App {
             last_launch: None,
             pending_link: None,
             languages: BTreeMap::new(),
+            versions: BTreeMap::new(),
             hit: HitAreas::default(),
             last_click: None,
             queried_once: false,

@@ -55,12 +55,14 @@ impl SortDir {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct Filters {
     pub query: String,
     pub omp_only: bool,
     pub non_empty: bool,
     pub unpassworded: bool,
     pub languages: BTreeSet<String>,
+    pub versions: BTreeSet<String>,
     pub sort: SortKey,
     pub dir: SortDir,
 }
@@ -71,6 +73,7 @@ impl Filters {
             + usize::from(self.non_empty)
             + usize::from(self.unpassworded)
             + usize::from(!self.languages.is_empty())
+            + usize::from(!self.versions.is_empty())
     }
 
     pub fn matches(&self, s: &Server) -> bool {
@@ -84,6 +87,9 @@ impl Filters {
             return false;
         }
         if !self.languages.is_empty() && !self.languages.contains(&normalize_language(&s.info.language)) {
+            return false;
+        }
+        if !self.versions.is_empty() && !self.versions.contains(&version_family(&s.info.version)) {
             return false;
         }
         let q = self.query.trim();
@@ -123,6 +129,15 @@ pub fn normalize_language(raw: &str) -> String {
     head + &c.as_str().to_lowercase()
 }
 
+// "omp 1.5.8.3079", "0.3.7-R2" and "0.3.DL-R1" become open.mp, 0.3.7 and 0.3.DL.
+pub fn version_family(raw: &str) -> String {
+    match raw.split(['-', ' ']).next().unwrap_or("").trim() {
+        "" | "unknown" => "Unknown".into(),
+        "omp" => "open.mp".into(),
+        other => other.to_owned(),
+    }
+}
+
 fn compare(key: SortKey, a: &Server, b: &Server) -> Ordering {
     match key {
         SortKey::None => Ordering::Equal,
@@ -152,6 +167,7 @@ mod tests {
         s.info.omp = omp;
         s.info.password = pw;
         s.info.language = lang.into();
+        s.info.version = if omp { "omp 1.5.8.3079".into() } else { "0.3.7-R2".into() };
         s
     }
 
@@ -197,6 +213,31 @@ mod tests {
         assert_eq!(f.apply(&l), vec![1, 0, 2]);
         let f = Filters { sort: SortKey::Gamemode, dir: SortDir::Asc, ..Default::default() };
         assert_eq!(f.apply(&l), vec![2, 0, 1]);
+    }
+
+    #[test]
+    fn version_filter() {
+        let l = list();
+        let f = Filters { versions: ["0.3.7".to_string()].into_iter().collect(), ..Default::default() };
+        assert_eq!(f.apply(&l), vec![1]);
+        let f = Filters { versions: ["open.mp".to_string()].into_iter().collect(), ..Default::default() };
+        assert_eq!(f.apply(&l), vec![0, 2]);
+        // settings written before these fields existed still load
+        let old: Filters = toml::from_str("query = \"x\"\nomp_only = true\nsort = \"Ping\"\ndir = \"Asc\"").unwrap();
+        assert_eq!(
+            old,
+            Filters { query: "x".into(), omp_only: true, sort: SortKey::Ping, dir: SortDir::Asc, ..Default::default() }
+        );
+    }
+
+    #[test]
+    fn version_families() {
+        assert_eq!(version_family("omp 1.5.8.3079"), "open.mp");
+        assert_eq!(version_family("0.3.7-R2"), "0.3.7");
+        assert_eq!(version_family("0.3.DL-R1"), "0.3.DL");
+        assert_eq!(version_family("0.3.7"), "0.3.7");
+        assert_eq!(version_family("unknown"), "Unknown");
+        assert_eq!(version_family(""), "Unknown");
     }
 
     #[test]

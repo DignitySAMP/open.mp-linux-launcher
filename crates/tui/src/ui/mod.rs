@@ -64,6 +64,9 @@ fn draw_header(f: &mut Frame, app: &mut App, area: Rect) {
         if app.filters.unpassworded {
             parts.push("open".to_string());
         }
+        if !app.filters.versions.is_empty() {
+            parts.push(app.filters.versions.iter().cloned().collect::<Vec<_>>().join("/"));
+        }
         if !app.filters.languages.is_empty() {
             parts.push(format!("{} lang", app.filters.languages.len()));
         }
