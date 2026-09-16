@@ -58,6 +58,7 @@ impl SortDir {
 #[serde(default)]
 pub struct Filters {
     pub query: String,
+    pub gamemode: String,
     pub omp_only: bool,
     pub non_empty: bool,
     pub unpassworded: bool,
@@ -72,6 +73,7 @@ impl Filters {
         usize::from(self.omp_only)
             + usize::from(self.non_empty)
             + usize::from(self.unpassworded)
+            + usize::from(!self.gamemode.trim().is_empty())
             + usize::from(!self.languages.is_empty())
             + usize::from(!self.versions.is_empty())
     }
@@ -90,6 +92,10 @@ impl Filters {
             return false;
         }
         if !self.versions.is_empty() && !self.versions.contains(&version_family(&s.info.version)) {
+            return false;
+        }
+        let gm = self.gamemode.trim();
+        if !gm.is_empty() && !s.info.gamemode.to_lowercase().contains(&gm.to_lowercase()) {
             return false;
         }
         let q = self.query.trim();
@@ -216,8 +222,11 @@ mod tests {
     }
 
     #[test]
-    fn version_filter() {
+    fn gamemode_and_version_filters() {
         let l = list();
+        let f = Filters { gamemode: "BRAVO".into(), ..Default::default() };
+        assert_eq!(f.apply(&l), vec![0]);
+        assert_eq!(f.active_count(), 1);
         let f = Filters { versions: ["0.3.7".to_string()].into_iter().collect(), ..Default::default() };
         assert_eq!(f.apply(&l), vec![1]);
         let f = Filters { versions: ["open.mp".to_string()].into_iter().collect(), ..Default::default() };

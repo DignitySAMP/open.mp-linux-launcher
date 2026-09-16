@@ -224,6 +224,7 @@ impl App {
         };
         self.popup = Some(Popup::Filters(FilterForm {
             cursor: 0,
+            editing: None,
             versions: counted(&self.versions, &self.filters.versions),
             languages: counted(&self.languages, &self.filters.languages),
         }));
@@ -340,6 +341,21 @@ impl App {
     }
 
     pub(super) fn handle_filters_key(&mut self, mut form: FilterForm, key: KeyEvent) {
+        if let Some(mut input) = form.editing.take() {
+            match key.code {
+                KeyCode::Esc => {}
+                KeyCode::Enter => {
+                    self.filters.gamemode = input.value().trim().to_owned();
+                    self.rebuild_view();
+                }
+                _ => {
+                    input.handle(key);
+                    form.editing = Some(input);
+                }
+            }
+            self.popup = Some(Popup::Filters(form));
+            return;
+        }
         let rows = form.rows();
         match key.code {
             KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('f') => {
@@ -359,6 +375,11 @@ impl App {
                     1 => self.filters.non_empty = !self.filters.non_empty,
                     2 => self.filters.unpassworded = !self.filters.unpassworded,
                     3 => {
+                        if key.code == KeyCode::Enter {
+                            form.editing = Some(Input::new(self.filters.gamemode.clone()));
+                        }
+                    }
+                    4 => {
                         self.filters.sort = if back {
                             let all = SortKey::ALL;
                             let i = all.iter().position(|k| *k == self.filters.sort).unwrap_or(0);
@@ -367,7 +388,7 @@ impl App {
                             self.filters.sort.next()
                         }
                     }
-                    4 => self.filters.dir = self.filters.dir.toggle(),
+                    5 => self.filters.dir = self.filters.dir.toggle(),
                     n => {
                         let n = n - FilterForm::FIXED;
                         let (set, item) = if n < form.versions.len() {

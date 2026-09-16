@@ -124,10 +124,16 @@ fn draw_filters(f: &mut Frame, app: &App, area: Rect, form: &FilterForm) {
     let inner = frame(f, rect, "Filters & sort", false);
     let check = |b: bool| if b { "[x]" } else { "[ ]" };
     let fl = &app.filters;
+    let gamemode = match &form.editing {
+        Some(input) => format!("gamemode: ▏{}", input.display()),
+        None if fl.gamemode.is_empty() => "gamemode: (any)".to_string(),
+        None => format!("gamemode: {}", fl.gamemode),
+    };
     let mut rows = vec![
         format!("{} open.mp servers only", check(fl.omp_only)),
         format!("{} hide empty servers", check(fl.non_empty)),
         format!("{} hide passworded servers", check(fl.unpassworded)),
+        gamemode,
         format!("sort by: {}", sort_label(fl.sort, fl.dir)),
         format!("direction: {}", if fl.dir == omptui_core::filter::SortDir::Asc { "ascending" } else { "descending" }),
     ];
@@ -151,8 +157,17 @@ fn draw_filters(f: &mut Frame, app: &App, area: Rect, form: &FilterForm) {
     let visible = inner.height.saturating_sub(1) as usize;
     let start = cursor_line.saturating_sub(visible.saturating_sub(1));
     let mut lines: Vec<Line> = display.into_iter().skip(start).take(visible).collect();
-    lines.push(Line::from(Span::styled("Space toggle  c clear  Esc close", theme::dim())));
+    let hint = match (&form.editing, form.cursor) {
+        (Some(_), _) => "Enter apply  Esc cancel edit",
+        (None, 3) => "Enter edit  c clear all  Esc close",
+        _ => "Space toggle  c clear  Esc close",
+    };
+    lines.push(Line::from(Span::styled(hint, theme::dim())));
     f.render_widget(Paragraph::new(lines), inner);
+    if let Some(input) = &form.editing {
+        let x = inner.x + 1 + "gamemode: ".len() as u16 + 1 + input.cursor() as u16;
+        f.set_cursor_position((x.min(inner.right().saturating_sub(1)), inner.y + (cursor_line - start) as u16));
+    }
 }
 
 fn draw_settings(f: &mut Frame, app: &App, area: Rect, form: &SettingsForm) {
