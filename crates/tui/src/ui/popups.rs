@@ -124,25 +124,17 @@ fn draw_filters(f: &mut Frame, app: &App, area: Rect, form: &FilterForm) {
     let inner = frame(f, rect, "Filters & sort", false);
     let check = |b: bool| if b { "[x]" } else { "[ ]" };
     let fl = &app.filters;
-    let mut rows: Vec<(String, bool)> = vec![
-        (format!("{} open.mp servers only", check(fl.omp_only)), true),
-        (format!("{} hide empty servers", check(fl.non_empty)), true),
-        (format!("{} hide passworded servers", check(fl.unpassworded)), true),
-        (format!("sort by: {}", sort_label(fl.sort, fl.dir)), true),
-        (
-            format!(
-                "direction: {}",
-                if fl.dir == omptui_core::filter::SortDir::Asc { "ascending" } else { "descending" }
-            ),
-            true,
-        ),
+    let mut rows = vec![
+        format!("{} open.mp servers only", check(fl.omp_only)),
+        format!("{} hide empty servers", check(fl.non_empty)),
+        format!("{} hide passworded servers", check(fl.unpassworded)),
+        format!("sort by: {}", sort_label(fl.sort, fl.dir)),
+        format!("direction: {}", if fl.dir == omptui_core::filter::SortDir::Asc { "ascending" } else { "descending" }),
     ];
-    for (lang, n) in &form.languages {
-        rows.push((format!("{} {lang} ({n})", check(fl.languages.contains(lang))), false));
-    }
+    rows.extend(form.languages.iter().map(|(l, n)| format!("{} {l} ({n})", check(fl.languages.contains(l)))));
     let mut display: Vec<Line> = Vec::new();
     let mut cursor_line = 0;
-    for (i, (text, _)) in rows.iter().enumerate() {
+    for (i, text) in rows.iter().enumerate() {
         if i == FilterForm::FIXED {
             display.push(Line::from(Span::styled(" languages", theme::dim())));
         }

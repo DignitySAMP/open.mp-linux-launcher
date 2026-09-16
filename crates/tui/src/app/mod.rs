@@ -113,6 +113,15 @@ impl App {
         }
     }
 
+    pub fn list_len(&self, kind: ListKind) -> usize {
+        match kind {
+            ListKind::Favorites => self.lists.favorites.len(),
+            ListKind::Internet => self.internet.len(),
+            ListKind::Partners => self.internet.iter().filter(|s| s.info.partner).count(),
+            ListKind::Recent => self.lists.recent.len(),
+        }
+    }
+
     pub fn selected_server(&self) -> Option<&Server> {
         let row = self.table.selected()?;
         let idx = *self.view.get(row)?;

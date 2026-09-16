@@ -33,13 +33,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
 fn draw_header(f: &mut Frame, app: &App, area: Rect) {
     let mut spans = vec![Span::styled(" omp-tui ", theme::title())];
     for (i, kind) in ListKind::ALL.iter().enumerate() {
-        let count = match kind {
-            ListKind::Favorites => app.lists.favorites.len(),
-            ListKind::Internet => app.internet.len(),
-            ListKind::Partners => app.internet.iter().filter(|s| s.info.partner).count(),
-            ListKind::Recent => app.lists.recent.len(),
-        };
-        let label = format!(" {} {} ({count}) ", i + 1, kind.title());
+        let label = format!(" {} {} ({}) ", i + 1, kind.title(), app.list_len(*kind));
         let style = if *kind == app.tab { theme::tab_active() } else { theme::tab_inactive() };
         spans.push(Span::styled(label, style));
         spans.push(Span::raw(" "));
@@ -84,15 +78,7 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
             + ListKind::ALL
                 .iter()
                 .enumerate()
-                .map(|(i, k)| {
-                    let count = match k {
-                        ListKind::Favorites => app.lists.favorites.len(),
-                        ListKind::Internet => app.internet.len(),
-                        ListKind::Partners => app.internet.iter().filter(|s| s.info.partner).count(),
-                        ListKind::Recent => app.lists.recent.len(),
-                    };
-                    (format!(" {} {} ({count}) ", i + 1, k.title()).chars().count() + 1) as u16
-                })
+                .map(|(i, k)| (format!(" {} {} ({}) ", i + 1, k.title(), app.list_len(*k)).chars().count() + 1) as u16)
                 .sum::<u16>()
             + 2
             + 1
