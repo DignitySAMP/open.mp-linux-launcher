@@ -29,7 +29,14 @@ cargo build --release
 ## Usage
 
 Run `omp-tui`. The first boot finds Wine and the game, downloads the client files and opens the
-server list. `Enter` joins, `F` favorites, `/` searches, `,` opens settings, `?` lists all keys.
+server list. Additionally, you can also use the mouse to select or join a server, browse the tabs or
+search.
+
+### Keys
+
+It comes with some shortcuts: `ENTER` to join a server, `F` to favourite, `/` to search, `w` to open
+a server's website, `D` to open a server's discord (open.mp servers only), `,` to open settings and
+`?` to list all usable keys.
 
 ### Command line
 
@@ -80,3 +87,7 @@ once and stored in `~/.local/share/omp-tui/secret.key`, so sharing or backing up
 not leak them.
 
 For troubleshooting, use `omp-tui --check` to see why the game failed to launch.
+
+Network disclosure: by default, when the launcher starts, it sends a request to Github and compares
+the latest release with the one you are running. This is done to show you a notice if there's a new
+update. You can turn it off in Settings.
