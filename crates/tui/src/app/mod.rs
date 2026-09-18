@@ -45,6 +45,14 @@ pub struct HitAreas {
     pub list: Rect,
     // table rows without the header line
     pub rows: Rect,
+    pub popup: PopupHits,
+}
+
+// row -> field / cursor index
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct PopupHits {
+    pub area: Rect,
+    pub rows: Vec<(Rect, usize)>,
 }
 
 pub struct App {

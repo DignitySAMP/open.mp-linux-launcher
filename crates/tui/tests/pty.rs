@@ -272,7 +272,11 @@ async fn mouse_clicks_and_update_notice() {
     tui.send(b"\x1b[<0;12;5M\x1b[<0;12;5m");
     let screen = tui.wait_for("Join server");
     assert!(screen.contains("server has a password"), "{screen}");
-    tui.send(b"\x1b");
+    // row 16 = remember password, then a click outside of the popup
+    tui.send(b"\x1b[<0;45;16M\x1b[<0;45;16m");
+    tui.wait_for("[x] remember password");
+    tui.send(b"\x1b[<0;2;2M\x1b[<0;2;2m");
+    tui.wait_gone("Join server");
     tui.send(b"\x1b[<64;12;5M");
     tui.wait_for("Alpha Freeroam  127.0.0.1");
     tui.send(b"q");

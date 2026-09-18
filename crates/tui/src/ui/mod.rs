@@ -27,7 +27,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     draw_players(f, app, players_area);
     draw_graph(f, app, graph_area);
     draw_footer(f, app, footer);
-    popups::draw(f, app, area);
+    app.hit.popup = popups::draw(f, app, area);
 }
 
 fn draw_header(f: &mut Frame, app: &mut App, area: Rect) {

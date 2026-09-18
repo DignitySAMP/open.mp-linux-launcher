@@ -1,7 +1,7 @@
-use crate::app::App;
 use crate::app::popup::{
     FilterForm, JoinForm, LaunchState, Popup, ServerSettingsForm, SettingsForm, SettingsRow, sort_label,
 };
+use crate::app::{App, PopupHits};
 use crate::input::Input;
 use crate::theme;
 use ratatui::Frame;
@@ -10,8 +10,8 @@ use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Clear, Paragraph, Wrap};
 
-pub fn draw(f: &mut Frame, app: &App, area: Rect) {
-    let Some(popup) = &app.popup else { return };
+pub fn draw(f: &mut Frame, app: &App, area: Rect) -> PopupHits {
+    let Some(popup) = &app.popup else { return PopupHits::default() };
     match popup {
         Popup::Join(form) => draw_join(f, area, form),
         Popup::AddServer(input) => {
@@ -53,6 +53,10 @@ pub(crate) fn ellipsize_left(s: &str, width: usize) -> String {
     format!("…{tail}")
 }
 
+fn row_at(inner: Rect, line: u16) -> Rect {
+    Rect { y: inner.y + line, height: 1, ..inner }.intersection(inner)
+}
+
 fn field<'a>(label: &'a str, input: &Input, active: bool) -> Line<'a> {
     let style = if active { theme::key() } else { theme::text() };
     Line::from(vec![
@@ -67,7 +71,7 @@ fn set_cursor(f: &mut Frame, inner: Rect, row: u16, label_width: u16, input: &In
     f.set_cursor_position((x.min(inner.right().saturating_sub(1)), inner.y + row));
 }
 
-fn draw_join(f: &mut Frame, area: Rect, form: &JoinForm) {
+fn draw_join(f: &mut Frame, area: Rect, form: &JoinForm) -> PopupHits {
     let rect = centered(area, 64, 12);
     let inner = frame(f, rect, "Join server", false);
     let s = &form.server;
@@ -112,9 +116,12 @@ fn draw_join(f: &mut Frame, area: Rect, form: &JoinForm) {
         1 => set_cursor(f, inner, 3, 12, &form.password),
         _ => {}
     }
+    // line 6 is empty
+    let rows = [2, 3, 4, 5, 7].iter().enumerate().map(|(field, line)| (row_at(inner, *line), field)).collect();
+    PopupHits { area: rect, rows }
 }
 
-fn draw_prompt(f: &mut Frame, area: Rect, title: &str, hint: &str, input: &Input) {
+fn draw_prompt(f: &mut Frame, area: Rect, title: &str, hint: &str, input: &Input) -> PopupHits {
     let rect = centered(area, 80, 6);
     let inner = frame(f, rect, title, false);
     let (shown, col) = input.window(usize::from(inner.width.saturating_sub(3)));
@@ -127,9 +134,10 @@ fn draw_prompt(f: &mut Frame, area: Rect, title: &str, hint: &str, input: &Input
     f.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), inner);
     let x = inner.x + 2 + col as u16;
     f.set_cursor_position((x.min(inner.right().saturating_sub(1)), inner.y + 2));
+    PopupHits { area: rect, rows: Vec::new() }
 }
 
-fn draw_filters(f: &mut Frame, app: &App, area: Rect, form: &FilterForm) {
+fn draw_filters(f: &mut Frame, app: &App, area: Rect, form: &FilterForm) -> PopupHits {
     let rect = centered(area, 50, (form.rows() + 5).min(34) as u16);
     let inner = frame(f, rect, "Filters & sort", false);
     let check = |b: bool| if b { "[x]" } else { "[ ]" };
@@ -149,24 +157,26 @@ fn draw_filters(f: &mut Frame, app: &App, area: Rect, form: &FilterForm) {
     ];
     rows.extend(form.versions.iter().map(|(v, n)| format!("{} {v} ({n})", check(fl.versions.contains(v)))));
     rows.extend(form.languages.iter().map(|(l, n)| format!("{} {l} ({n})", check(fl.languages.contains(l)))));
-    let mut display: Vec<Line> = Vec::new();
+    // None = heading
+    let mut display: Vec<(Line, Option<usize>)> = Vec::new();
     let mut cursor_line = 0;
     for (i, text) in rows.iter().enumerate() {
         if i == FilterForm::FIXED {
-            display.push(Line::from(Span::styled(" versions", theme::dim())));
+            display.push((Line::from(Span::styled(" versions", theme::dim())), None));
         }
         if i == FilterForm::FIXED + form.versions.len() {
-            display.push(Line::from(Span::styled(" languages", theme::dim())));
+            display.push((Line::from(Span::styled(" languages", theme::dim())), None));
         }
         if i == form.cursor {
             cursor_line = display.len();
         }
         let style = if i == form.cursor { theme::selected() } else { theme::text() };
-        display.push(Line::from(Span::styled(format!(" {text} "), style)));
+        display.push((Line::from(Span::styled(format!(" {text} "), style)), Some(i)));
     }
     let visible = inner.height.saturating_sub(1) as usize;
     let start = cursor_line.saturating_sub(visible.saturating_sub(1));
-    let mut lines: Vec<Line> = display.into_iter().skip(start).take(visible).collect();
+    let (mut lines, shown): (Vec<Line>, Vec<Option<usize>>) = display.into_iter().skip(start).take(visible).unzip();
+    let hits = shown.iter().enumerate().filter_map(|(y, row)| Some((row_at(inner, y as u16), (*row)?))).collect();
     let hint = match (&form.editing, form.cursor) {
         (Some(_), _) => "Enter apply  Esc cancel edit",
         (None, 3) => "Enter edit  c clear all  Esc close",
@@ -178,17 +188,19 @@ fn draw_filters(f: &mut Frame, app: &App, area: Rect, form: &FilterForm) {
         let x = inner.x + 1 + "gamemode: ".len() as u16 + 1 + input.cursor() as u16;
         f.set_cursor_position((x.min(inner.right().saturating_sub(1)), inner.y + (cursor_line - start) as u16));
     }
+    PopupHits { area: rect, rows: hits }
 }
 
 const SETTINGS_LABEL: u16 = 38;
 
-fn draw_settings(f: &mut Frame, app: &App, area: Rect, form: &SettingsForm) {
+fn draw_settings(f: &mut Frame, app: &App, area: Rect, form: &SettingsForm) -> PopupHits {
     let rect = centered(area, 96, 29);
     let inner = frame(f, rect, "Settings", false);
     let [list_area, msg_area] = Layout::vertical([Constraint::Min(3), Constraint::Length(2)]).areas(inner);
     let value_width = usize::from(list_area.width.saturating_sub(SETTINGS_LABEL + 2));
     let mut cursor_col = 0;
     let mut lines = Vec::new();
+    let mut hits = Vec::new();
     for (i, row) in SettingsRow::ALL.iter().enumerate() {
         let active = i == form.cursor;
         let style = if active { theme::selected() } else { theme::text() };
@@ -214,6 +226,7 @@ fn draw_settings(f: &mut Frame, app: &App, area: Rect, form: &SettingsForm) {
                 Span::styled(value, style),
             ])
         };
+        hits.push((row_at(list_area, lines.len() as u16), i));
         lines.push(line);
     }
     f.render_widget(Paragraph::new(lines), list_area);
@@ -237,9 +250,10 @@ fn draw_settings(f: &mut Frame, app: &App, area: Rect, form: &SettingsForm) {
         let x = list_area.x + SETTINGS_LABEL + 2 + cursor_col;
         f.set_cursor_position((x.min(list_area.right().saturating_sub(1)), y));
     }
+    PopupHits { area: rect, rows: hits }
 }
 
-fn draw_server_settings(f: &mut Frame, area: Rect, form: &ServerSettingsForm) {
+fn draw_server_settings(f: &mut Frame, area: Rect, form: &ServerSettingsForm) -> PopupHits {
     let rect = centered(area, 64, 10);
     let inner = frame(f, rect, "Server settings", false);
     let version = form.samp_version.map(|v| v.label().to_string()).unwrap_or_else(|| "(global setting)".into());
@@ -271,6 +285,7 @@ fn draw_server_settings(f: &mut Frame, area: Rect, form: &ServerSettingsForm) {
         1 => set_cursor(f, inner, 3, 12, &form.password),
         _ => {}
     }
+    PopupHits { area: rect, rows: (0..3).map(|field| (row_at(inner, 2 + field as u16), field)).collect() }
 }
 
 const HELP: &[(&str, &str)] = &[
@@ -296,7 +311,7 @@ const HELP: &[(&str, &str)] = &[
     ("q", "quit"),
 ];
 
-fn draw_help(f: &mut Frame, area: Rect) {
+fn draw_help(f: &mut Frame, area: Rect) -> PopupHits {
     let rect = centered(area, 72, (HELP.len() + 5) as u16);
     let inner = frame(f, rect, "Keys", false);
     let mut lines: Vec<Line> = HELP
@@ -309,9 +324,10 @@ fn draw_help(f: &mut Frame, area: Rect) {
     lines.push(Line::from(Span::styled(" ◆ open.mp server   ○ SA-MP server   ★ favorite   🔒 password", theme::dim())));
     lines.push(Line::from(Span::styled(" mouse: click selects, double-click joins, wheel scrolls", theme::dim())));
     f.render_widget(Paragraph::new(lines), inner);
+    PopupHits { area: rect, rows: Vec::new() }
 }
 
-fn draw_message(f: &mut Frame, area: Rect, title: &str, lines: &[String], error: bool) {
+fn draw_message(f: &mut Frame, area: Rect, title: &str, lines: &[String], error: bool) -> PopupHits {
     let width = lines.iter().map(|l| l.chars().count()).max().unwrap_or(20).clamp(30, 110) as u16 + 4;
     let rect = centered(area, width, (lines.len() + 4).min(40) as u16);
     let inner = frame(f, rect, title, error);
@@ -319,11 +335,17 @@ fn draw_message(f: &mut Frame, area: Rect, title: &str, lines: &[String], error:
     text.push(Line::raw(""));
     text.push(Line::from(Span::styled("Esc / Enter close", theme::dim())));
     f.render_widget(Paragraph::new(text).wrap(Wrap { trim: false }), inner);
+    PopupHits { area: rect, rows: Vec::new() }
 }
 
-fn draw_confirm(f: &mut Frame, area: Rect, title: &str, text: &str) {
+fn draw_confirm(f: &mut Frame, area: Rect, title: &str, text: &str) -> PopupHits {
     let rect = centered(area, 60, 6);
     let inner = frame(f, rect, title, false);
+    // NOTE: kept on one line, the buttons have a fixed row
+    let mut text = text.to_owned();
+    if text.chars().count() > usize::from(inner.width) {
+        text = text.chars().take(usize::from(inner.width).saturating_sub(1)).chain(['…']).collect();
+    }
     let lines = vec![
         Line::from(Span::styled(text, theme::text())),
         Line::raw(""),
@@ -335,9 +357,11 @@ fn draw_confirm(f: &mut Frame, area: Rect, title: &str, text: &str) {
         ]),
     ];
     f.render_widget(Paragraph::new(lines).wrap(Wrap { trim: true }).alignment(Alignment::Left), inner);
+    let button = |x: u16, width: u16| Rect { x: inner.x + x, width, ..row_at(inner, 2) }.intersection(inner);
+    PopupHits { area: rect, rows: vec![(button(0, 17), 0), (button(20, 14), 1)] }
 }
 
-fn draw_launch(f: &mut Frame, area: Rect, st: &LaunchState) {
+fn draw_launch(f: &mut Frame, area: Rect, st: &LaunchState) -> PopupHits {
     let rect = centered(area, 100, 22);
     let title = if st.failed {
         format!("Launch failed: {}", st.server)
@@ -358,4 +382,5 @@ fn draw_launch(f: &mut Frame, area: Rect, st: &LaunchState) {
     let footer = if st.finished { "Esc close   l reopen later" } else { "Esc hide (the game keeps running)   c clear" };
     lines.push(Line::from(Span::styled(footer, theme::dim())));
     f.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }).style(Style::default()), inner);
+    PopupHits { area: rect, rows: Vec::new() }
 }

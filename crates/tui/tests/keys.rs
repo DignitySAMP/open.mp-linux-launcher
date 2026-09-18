@@ -817,9 +817,10 @@ async fn mouse_selects_rows_tabs_and_search() {
     assert_eq!(selected_name(&h.app), "Charlie Deathmatch");
     mouse(&mut h.app, click, rows.x + 3, rows.y + 2);
     assert!(matches!(h.app.popup, Some(Popup::Join(_))));
+    render(&mut h.app, 120, 32);
     mouse(&mut h.app, click, rows.x + 3, rows.y);
-    assert!(matches!(h.app.popup, Some(Popup::Join(_))), "clicks are ignored while a popup is open");
-    key(&mut h.app, KeyCode::Esc);
+    assert!(h.app.popup.is_none(), "a click next to the popup closes it");
+    assert_eq!(h.app.table.selected(), Some(2), "and does not reach the list behind it");
     mouse(&mut h.app, click, rows.x + 3, rows.y + rows.height - 1);
     assert_eq!(h.app.table.selected(), Some(usize::from(rows.height) - 1));
     mouse(&mut h.app, MouseEventKind::ScrollDown, rows.x, rows.y);
@@ -900,4 +901,117 @@ async fn check_report_names_the_d3d9_stack() {
     fs::write(sys.join("d3d9.dll"), b"MZ ... DXVK: v2.7 ...").unwrap();
     fs::write(prefix.join("user.reg"), "[Software\\\\Wine\\\\DllOverrides] 1\n\"*d3d9\"=\"native\"\n").unwrap();
     assert!(h.app.check_report().contains(&"Direct3D 9: DXVK (d3d9=native)".to_string()));
+}
+
+fn popup_row(app: &App, index: usize) -> (u16, u16) {
+    let (r, _) = app.hit.popup.rows.iter().find(|(_, i)| *i == index).unwrap_or_else(|| panic!("no row {index}"));
+    (r.x + 2, r.y)
+}
+
+fn click_row(app: &mut App, index: usize) {
+    render(app, 120, 34);
+    let (x, y) = popup_row(app, index);
+    mouse(app, MouseEventKind::Down(MouseButton::Left), x, y);
+}
+
+#[tokio::test]
+async fn mouse_in_the_join_popup() {
+    let mut h = app_with_list().await;
+    h.app.settings.nickname = "Carl".into();
+    key(&mut h.app, KeyCode::Enter);
+    let join = |app: &App| match &app.popup {
+        Some(Popup::Join(f)) => (**f).clone(),
+        other => panic!("{other:?}"),
+    };
+    assert_eq!(join(&h.app).field, 0);
+    click_row(&mut h.app, 1);
+    assert_eq!(join(&h.app).field, 1);
+    type_str(&mut h.app, "pw");
+    assert_eq!(join(&h.app).password.value(), "pw");
+    click_row(&mut h.app, 2);
+    assert!(join(&h.app).remember_password);
+    click_row(&mut h.app, 2);
+    assert!(!join(&h.app).remember_password);
+    let before = join(&h.app).samp_version;
+    click_row(&mut h.app, 3);
+    assert_eq!(join(&h.app).samp_version, before.next());
+    // empty line above the button
+    render(&mut h.app, 120, 34);
+    let (x, y) = popup_row(&h.app, 4);
+    mouse(&mut h.app, MouseEventKind::Down(MouseButton::Left), x, y - 1);
+    assert_eq!(join(&h.app).field, 3);
+    click_row(&mut h.app, 4);
+    assert!(!matches!(h.app.popup, Some(Popup::Join(_))), "the Join button was pressed: {:?}", h.app.popup);
+}
+
+#[tokio::test]
+async fn mouse_in_settings_filters_and_dialogs() {
+    use omp_tui::app::popup::SettingsRow;
+    let mut h = app_with_list().await;
+    let click = MouseEventKind::Down(MouseButton::Left);
+    let index = |row: SettingsRow| SettingsRow::ALL.iter().position(|r| *r == row).unwrap();
+    let form = |app: &App| match &app.popup {
+        Some(Popup::Settings(f)) => f.clone(),
+        other => panic!("{other:?}"),
+    };
+
+    key(&mut h.app, KeyCode::Char(','));
+    assert!(!h.app.settings.quit_after_launch);
+    click_row(&mut h.app, index(SettingsRow::QuitAfterLaunch));
+    assert!(h.app.settings.quit_after_launch);
+    assert_eq!(form(&h.app).cursor, index(SettingsRow::QuitAfterLaunch));
+
+    click_row(&mut h.app, index(SettingsRow::Nickname));
+    assert!(form(&h.app).editing.is_none());
+    click_row(&mut h.app, index(SettingsRow::Nickname));
+    assert!(form(&h.app).editing.is_some());
+    click_row(&mut h.app, index(SettingsRow::OmpInject));
+    assert!(form(&h.app).editing.is_some(), "rows are dead while a value is being edited");
+    assert!(h.app.settings.omp_inject);
+    key(&mut h.app, KeyCode::Esc);
+
+    click_row(&mut h.app, index(SettingsRow::ActionDetect));
+    assert!(matches!(h.app.popup, Some(Popup::Settings(_))), "one click must not run an action");
+    click_row(&mut h.app, index(SettingsRow::ActionDetect));
+    match &h.app.popup {
+        Some(Popup::Message { title, .. }) => assert_eq!(title, "Auto-detect"),
+        other => panic!("{other:?}"),
+    }
+    render(&mut h.app, 120, 34);
+    let inside = h.app.hit.popup.area;
+    mouse(&mut h.app, click, inside.x + 2, inside.y + 1);
+    assert!(matches!(h.app.popup, Some(Popup::Settings(_))));
+
+    render(&mut h.app, 120, 34);
+    let cursor = form(&h.app).cursor;
+    mouse(&mut h.app, MouseEventKind::ScrollUp, inside.x + 2, inside.y + 2);
+    assert_eq!(form(&h.app).cursor, cursor - 1);
+    mouse(&mut h.app, click, 0, 0);
+    assert!(h.app.popup.is_none());
+
+    key(&mut h.app, KeyCode::Char('f'));
+    assert!(!h.app.filters.non_empty);
+    click_row(&mut h.app, 1);
+    assert!(h.app.filters.non_empty);
+    assert_eq!(h.app.view.len(), 31, "the list behind the popup is filtered at once");
+    click_row(&mut h.app, 3);
+    click_row(&mut h.app, 3);
+    match &h.app.popup {
+        Some(Popup::Filters(f)) => assert!(f.editing.is_some()),
+        other => panic!("{other:?}"),
+    }
+    key(&mut h.app, KeyCode::Esc);
+    key(&mut h.app, KeyCode::Esc);
+    assert!(h.app.popup.is_none());
+
+    h.app.lists.recent = h.app.internet.clone();
+    key(&mut h.app, KeyCode::Char('4'));
+    key(&mut h.app, KeyCode::Char('x'));
+    assert!(matches!(h.app.popup, Some(Popup::Confirm { .. })));
+    click_row(&mut h.app, 1);
+    assert!(h.app.popup.is_none());
+    assert!(!h.app.lists.recent.is_empty());
+    key(&mut h.app, KeyCode::Char('x'));
+    click_row(&mut h.app, 0);
+    assert!(h.app.lists.recent.is_empty());
 }
