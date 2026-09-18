@@ -881,3 +881,23 @@ async fn auto_refresh_and_update_notice() {
     let screen = render(&mut h.app, 120, 32);
     assert!(screen.lines().next().unwrap().contains("v9.9.9 available"), "{screen}");
 }
+
+#[tokio::test]
+async fn check_report_names_the_d3d9_stack() {
+    let mut h = app_with_list().await;
+    let prefix = h.root.path().join("pfx");
+    let sys = prefix.join("drive_c/windows/syswow64");
+    fs::create_dir_all(&sys).unwrap();
+    fs::write(prefix.join("system.reg"), "WINE REGISTRY Version 2\n#arch=win64\n").unwrap();
+    fs::write(sys.join("d3d9.dll"), b"MZ  Wine builtin DLL").unwrap();
+    h.app.settings.wine_prefix = Some(prefix.clone());
+    assert!(h.app.check_report().contains(&"Direct3D 9: wined3d (d3d9=builtin)".to_string()));
+    assert!(h.app.check_report().iter().any(|l| l.starts_with("arial.ttf in prefix: ✗")));
+    fs::create_dir_all(prefix.join("drive_c/windows/Fonts")).unwrap();
+    fs::write(prefix.join("drive_c/windows/Fonts/arial.ttf"), b"").unwrap();
+    assert!(h.app.check_report().contains(&"arial.ttf in prefix: ✓".to_string()));
+
+    fs::write(sys.join("d3d9.dll"), b"MZ ... DXVK: v2.7 ...").unwrap();
+    fs::write(prefix.join("user.reg"), "[Software\\\\Wine\\\\DllOverrides] 1\n\"*d3d9\"=\"native\"\n").unwrap();
+    assert!(h.app.check_report().contains(&"Direct3D 9: DXVK (d3d9=native)".to_string()));
+}

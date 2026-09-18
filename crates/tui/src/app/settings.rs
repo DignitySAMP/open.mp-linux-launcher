@@ -299,6 +299,11 @@ impl App {
                 "arial.ttf in prefix: {}",
                 if pfx.has_arial() { "✓" } else { "✗ missing (SA-MP crashes on pause without it)" }
             ));
+            let d3d = pfx.d3d_stack();
+            lines.push(format!("Direct3D 9: {}", d3d.describe()));
+            if d3d.uses_dxvk() && !crate::vulkan_available() {
+                lines.push("  ✗ no Vulkan driver found, DXVK will not render".into());
+            }
         }
         match &self.settings.game_dir {
             None => lines.push("Game folder: ✗ not set".into()),

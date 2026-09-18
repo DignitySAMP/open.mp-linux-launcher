@@ -163,6 +163,10 @@ pub fn prepare(req: &LaunchRequest, files: &ClientFiles, helper: &[u8]) -> Resul
                 .into(),
         );
     }
+    if prefix.d3d_stack().uses_dxvk() && !crate::dxvk::vulkan_available() {
+        warnings.push("the prefix uses DXVK but no Vulkan driver was found; expect a black window".into());
+    }
+
     let helper_path = extract_helper(files, helper)?;
     let win =
         |p: &Path| prefix.to_windows_path(p).ok_or_else(|| LaunchError::Path(p.to_path_buf(), req.wine.prefix.clone()));

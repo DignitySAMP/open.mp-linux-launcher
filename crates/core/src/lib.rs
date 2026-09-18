@@ -1,6 +1,7 @@
 pub mod api;
 pub mod deeplink;
 pub mod download;
+pub mod dxvk;
 pub mod encoding;
 pub mod filter;
 pub mod import;
