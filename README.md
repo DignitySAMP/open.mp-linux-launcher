@@ -30,7 +30,8 @@ cargo build --release
 
 Run `omp-tui`. The first boot finds Wine and the game, downloads the client files and opens the
 server list. Additionally, you can also use the mouse to select or join a server, browse the tabs or
-search.
+search. It also works in the popups (click outside of one to close it) and on the links in the
+server details.
 
 ### Keys
 
@@ -87,6 +88,14 @@ once and stored in `~/.local/share/omp-tui/secret.key`, so sharing or backing up
 not leak them.
 
 For troubleshooting, use `omp-tui --check` to see why the game failed to launch.
+
+If the game crashes when you press Esc or right after you spawn, the prefix is probably missing the
+Arial font. The launcher installs it automatically when you first do a clean boot, but for existing
+prefixes head to `Settings` > `Install Arial into the prefix`, or run `winetricks arial` yourself.
+
+Optionally, you can go to `Settings` > `Install DXVK into the prefix`. It downloads the latest DXVK
+release from Github and needs a Vulkan driver. `omp-tui --check` shows which of wined3d or DXVK the
+prefix uses.
 
 Network disclosure: by default, when the launcher starts, it sends a request to Github and compares
 the latest release with the one you are running. This is done to show you a notice if there's a new
