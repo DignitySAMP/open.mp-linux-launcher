@@ -279,6 +279,107 @@ async fn mouse_clicks_and_update_notice() {
     assert!(tui.finish().success());
 }
 
+fn dxvk_tarball() -> Vec<u8> {
+    let mut b = tar::Builder::new(flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast()));
+    let dll = b"MZ fake 32-bit d3d9 ... DXVK: v9.9 ...";
+    let mut h = tar::Header::new_gnu();
+    h.set_size(dll.len() as u64);
+    h.set_mode(0o644);
+    h.set_cksum();
+    b.append_data(&mut h, "dxvk-9.9/x32/d3d9.dll", &dll[..]).unwrap();
+    b.into_inner().unwrap().finish().unwrap()
+}
+
+// wine reg add ... /v d3d9 /d native /f
+const FAKE_WINE: &str = r#"#!/bin/sh
+[ "$1" = reg ] && [ "$2" = add ] || exit 1
+printf '"d3d9"="native"\n' >> "$WINEPREFIX/user.reg"
+"#;
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn install_dxvk_from_settings() {
+    use std::os::unix::fs::PermissionsExt;
+    let mut w = world().await;
+    let root = w.root.path().to_path_buf();
+    let prefix = root.join("prefix");
+    let sys = prefix.join("drive_c/windows/syswow64");
+    std::fs::create_dir_all(&sys).unwrap();
+    std::fs::write(sys.join("d3d9.dll"), b"MZ  Wine builtin DLL").unwrap();
+    std::fs::write(prefix.join("system.reg"), "WINE REGISTRY Version 2\n#arch=win64\n").unwrap();
+    std::fs::write(prefix.join("user.reg"), "WINE REGISTRY Version 2\n\n[Software\\\\Wine\\\\DllOverrides] 1\n")
+        .unwrap();
+    let wine = root.join("wine");
+    std::fs::write(&wine, FAKE_WINE).unwrap();
+    std::fs::set_permissions(&wine, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+    let gh = MockServer::start().await;
+    let body = format!(
+        r#"{{"tag_name":"v9.9","assets":[{{"name":"dxvk-9.9.tar.gz","browser_download_url":"{}/dxvk-9.9.tar.gz"}}]}}"#,
+        gh.uri()
+    );
+    Mock::given(method("GET"))
+        .and(path("/dxvk/latest"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+        .mount(&gh)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/dxvk-9.9.tar.gz"))
+        .respond_with(ResponseTemplate::new(200).set_body_bytes(dxvk_tarball()))
+        .mount(&gh)
+        .await;
+    w.env.push(("OMPTUI_DXVK_URL", format!("{}/dxvk/latest", gh.uri())));
+    let args: Vec<String> =
+        ["--wine", wine.to_str().unwrap(), "--prefix", prefix.to_str().unwrap()].map(String::from).into();
+
+    // no vulkan, prefix stays untouched
+    let mut env = w.env.clone();
+    env.push(("OMPTUI_VULKAN", "0".into()));
+    let mut tui = Tui::spawn(&env, &args);
+    tui.wait_for("Bravo Roleplay");
+    tui.send(b",");
+    tui.wait_for("Install DXVK into the prefix");
+    for _ in 0..3 {
+        tui.send(b"\x1b[A");
+    }
+    tui.send(b"\r");
+    tui.wait_for("No Vulkan driver was found");
+    assert_eq!(std::fs::read(sys.join("d3d9.dll")).unwrap(), b"MZ  Wine builtin DLL");
+    tui.send(b"\r");
+    tui.send(b"\x1b");
+    tui.send(b"q");
+    assert!(tui.finish().success());
+
+    let mut env = w.env.clone();
+    env.push(("OMPTUI_VULKAN", "1".into()));
+    let mut tui = Tui::spawn(&env, &args);
+    tui.wait_for("Bravo Roleplay");
+    tui.send(b",");
+    tui.wait_for("Install DXVK into the prefix");
+    for _ in 0..3 {
+        tui.send(b"\x1b[A");
+    }
+    tui.send(b"\r");
+    let screen = tui.wait_for("d3d9 set to native");
+    assert!(screen.contains("DXVK v9.9 d3d9.dll installed"), "{screen}");
+    tui.send(b"\r");
+    tui.send(b"\x1b");
+    tui.send(b"q");
+    assert!(tui.finish().success());
+
+    let pfx = omptui_core::wine::Prefix::new(&prefix);
+    assert!(pfx.d3d_stack().uses_dxvk(), "{:?}", pfx.d3d_stack());
+    assert_eq!(std::fs::read(sys.join("d3d9.dll.wine")).unwrap(), b"MZ  Wine builtin DLL");
+
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_omp-tui"))
+        .args(&args)
+        .arg("--check")
+        .envs(env.iter().map(|(k, v)| (*k, v.as_str())))
+        .output()
+        .unwrap();
+    let report = String::from_utf8_lossy(&out.stdout);
+    assert!(report.contains("Direct3D 9: DXVK (d3d9=native)"), "{report}");
+}
+
 // winetricks -q arial
 const FAKE_WINETRICKS: &str = r#"#!/bin/sh
 [ "$1" = -q ] && [ "$2" = arial ] || exit 1
@@ -315,7 +416,7 @@ async fn install_arial_from_settings() {
     tui.wait_for("Bravo Roleplay");
     tui.send(b",");
     tui.wait_for("Install Arial into the prefix");
-    for _ in 0..3 {
+    for _ in 0..4 {
         tui.send(b"\x1b[A");
     }
     tui.send(b"\r");

@@ -22,6 +22,9 @@ tracing.workspace = true
 rand = "0.9"
 sevenz-rust2 = { version = "0.22", default-features = false }
 chacha20poly1305 = "0.10"
+tar = { version = "0.4", default-features = false }
+flate2 = "1"
+sha2 = "0.10"
 
 [dev-dependencies]
 sevenz-rust2 = { version = "0.22", default-features = false, features = ["compress", "util"] }

@@ -80,12 +80,13 @@ pub enum SettingsRow {
     ActionInitPrefix,
     ActionInstallD3dx9,
     ActionInstallArial,
+    ActionInstallDxvk,
     ActionImportUserdata,
     ActionInstallDesktop,
 }
 
 impl SettingsRow {
-    pub const ALL: [SettingsRow; 23] = [
+    pub const ALL: [SettingsRow; 24] = [
         SettingsRow::Nickname,
         SettingsRow::GameDir,
         SettingsRow::GameExe,
@@ -107,6 +108,7 @@ impl SettingsRow {
         SettingsRow::ActionInitPrefix,
         SettingsRow::ActionInstallD3dx9,
         SettingsRow::ActionInstallArial,
+        SettingsRow::ActionInstallDxvk,
         SettingsRow::ActionImportUserdata,
         SettingsRow::ActionInstallDesktop,
     ];
@@ -134,6 +136,7 @@ impl SettingsRow {
             SettingsRow::ActionInitPrefix => "▶ Create / update the Wine prefix (wineboot)",
             SettingsRow::ActionInstallD3dx9 => "▶ Install d3dx9 into the prefix (winetricks)",
             SettingsRow::ActionInstallArial => "▶ Install Arial into the prefix (winetricks)",
+            SettingsRow::ActionInstallDxvk => "▶ Install DXVK into the prefix (needs Vulkan)",
             SettingsRow::ActionImportUserdata => "▶ Import SA-MP favorites (USERDATA.DAT)…",
             SettingsRow::ActionInstallDesktop => "▶ Install desktop entry + omp:// handler",
         }
@@ -162,6 +165,7 @@ impl SettingsRow {
                 | SettingsRow::ActionInitPrefix
                 | SettingsRow::ActionInstallD3dx9
                 | SettingsRow::ActionInstallArial
+                | SettingsRow::ActionInstallDxvk
                 | SettingsRow::ActionImportUserdata
                 | SettingsRow::ActionInstallDesktop
         )

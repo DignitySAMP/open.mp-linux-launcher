@@ -183,7 +183,7 @@ fn draw_filters(f: &mut Frame, app: &App, area: Rect, form: &FilterForm) {
 const SETTINGS_LABEL: u16 = 38;
 
 fn draw_settings(f: &mut Frame, app: &App, area: Rect, form: &SettingsForm) {
-    let rect = centered(area, 96, 28);
+    let rect = centered(area, 96, 29);
     let inner = frame(f, rect, "Settings", false);
     let [list_area, msg_area] = Layout::vertical([Constraint::Min(3), Constraint::Length(2)]).areas(inner);
     let value_width = usize::from(list_area.width.saturating_sub(SETTINGS_LABEL + 2));

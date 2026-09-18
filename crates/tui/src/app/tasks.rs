@@ -189,6 +189,14 @@ impl Services {
         });
     }
 
+    pub fn install_dxvk(&self, env: WineEnv, releases_url: String) {
+        let tx = self.tx.clone();
+        tokio::spawn(async move {
+            let result = omptui_core::dxvk::install(&env, &releases_url).await;
+            let _ = tx.send(AppEvent::TaskDone { title: "Install DXVK".into(), result });
+        });
+    }
+
     pub fn import_userdata(&self, path: PathBuf) {
         let tx = self.tx.clone();
         tokio::task::spawn_blocking(move || {

@@ -85,6 +85,52 @@ async fn run_case(wine: &Path, root: &Path, game_exe: &Path, dll: &Path, suspend
     assert!(game_dir.join("SAMP").join("SAMP.img").is_file());
 }
 
+// dummy dll, real reg.exe and user.reg
+async fn dxvk_case(wine: &Path, root: &Path) {
+    use omptui_core::dxvk::{self, D3d9Dll};
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let env = WineEnv { wine: wine.to_path_buf(), prefix: root.join("prefix-running"), extra_env: Default::default() };
+    let before = env.prefix().d3d_stack();
+    assert_eq!(before.dll, D3d9Dll::Wine, "{before:?}");
+    assert!(!before.uses_dxvk());
+
+    let dll = b"MZ dummy 32-bit d3d9 ... DXVK: v9.9 ...";
+    let mut tarball = tar::Builder::new(flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast()));
+    let mut h = tar::Header::new_gnu();
+    h.set_size(dll.len() as u64);
+    h.set_mode(0o644);
+    h.set_cksum();
+    tarball.append_data(&mut h, "dxvk-9.9/x32/d3d9.dll", &dll[..]).unwrap();
+    let tarball = tarball.into_inner().unwrap().finish().unwrap();
+
+    let gh = MockServer::start().await;
+    let body = format!(
+        r#"{{"tag_name":"v9.9","assets":[{{"name":"dxvk-9.9.tar.gz","browser_download_url":"{}/dxvk-9.9.tar.gz"}}]}}"#,
+        gh.uri()
+    );
+    Mock::given(method("GET"))
+        .and(path("/latest"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+        .mount(&gh)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/dxvk-9.9.tar.gz"))
+        .respond_with(ResponseTemplate::new(200).set_body_bytes(tarball))
+        .mount(&gh)
+        .await;
+
+    let lines = dxvk::install(&env, &format!("{}/latest", gh.uri())).await.unwrap();
+    assert!(lines[0].starts_with("DXVK v9.9"), "{lines:?}");
+    let after = env.prefix().d3d_stack();
+    assert!(after.uses_dxvk(), "{after:?}");
+    assert_eq!(after.dll_override.as_deref(), Some("native"));
+    let sys = &env.prefix().system_dirs()[0];
+    assert!(sys.ends_with("syswow64"), "{}", sys.display());
+    assert!(sys.join("d3d9.dll.wine").is_file());
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn launches_dummy_game_and_injects_under_wine() {
     if std::env::var("OMPTUI_WINE_E2E").is_ok_and(|v| v == "0") {
@@ -107,4 +153,5 @@ async fn launches_dummy_game_and_injects_under_wine() {
     let root = tempfile::tempdir().unwrap();
     run_case(&wine, root.path(), &game, &dll, true).await;
     run_case(&wine, root.path(), &game, &dll, false).await;
+    dxvk_case(&wine, root.path()).await;
 }

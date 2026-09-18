@@ -41,6 +41,10 @@ pub fn assets_url() -> String {
     std::env::var("OMPTUI_ASSETS_URL").unwrap_or_else(|_| omptui_core::download::DEFAULT_ASSETS_URL.to_string())
 }
 
+pub fn dxvk_url() -> String {
+    std::env::var("OMPTUI_DXVK_URL").unwrap_or_else(|_| omptui_core::dxvk::RELEASES_URL.to_string())
+}
+
 // NOTE: OMPTUI_VULKAN=0/1 overrides the detection
 pub fn vulkan_available() -> bool {
     match std::env::var("OMPTUI_VULKAN").as_deref() {

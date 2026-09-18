@@ -244,6 +244,23 @@ impl App {
                 self.status("running winetricks arial…", false);
                 self.svc.install_arial(env);
             }
+            SettingsRow::ActionInstallDxvk => {
+                if !crate::vulkan_available() {
+                    self.after_message = self.popup.take();
+                    self.message(
+                        "Install DXVK",
+                        vec![
+                            "No Vulkan driver was found, DXVK would only give a black window.".into(),
+                            "Nothing was changed.".into(),
+                        ],
+                        true,
+                    );
+                    return;
+                }
+                let env = self.wine_env();
+                self.status("downloading DXVK…", false);
+                self.svc.install_dxvk(env, crate::dxvk_url());
+            }
             SettingsRow::ActionImportUserdata => {
                 let guess = self
                     .settings

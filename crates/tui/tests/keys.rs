@@ -504,7 +504,7 @@ async fn settings_popup_text_editing_toggles_and_actions() {
     key(&mut h.app, KeyCode::Esc);
     key(&mut h.app, KeyCode::Char(','));
     // up from the top wraps to the last action
-    for _ in 0..6 {
+    for _ in 0..7 {
         key(&mut h.app, KeyCode::Up);
     }
     key(&mut h.app, KeyCode::Enter);
