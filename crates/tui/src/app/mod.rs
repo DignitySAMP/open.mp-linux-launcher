@@ -42,6 +42,7 @@ pub struct StatusLine {
 pub struct HitAreas {
     pub tabs: Vec<(Rect, ListKind)>,
     pub search: Rect,
+    pub update: Rect,
     pub list: Rect,
     // table rows without the header line
     pub rows: Rect,

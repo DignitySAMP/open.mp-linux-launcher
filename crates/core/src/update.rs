@@ -4,6 +4,7 @@ use serde::Deserialize;
 use std::time::Duration;
 
 pub const RELEASES_URL: &str = "https://api.github.com/repos/DignitySAMP/open.mp-linux-launcher/releases/latest";
+pub const RELEASE_PAGE: &str = "https://github.com/DignitySAMP/open.mp-linux-launcher/releases/latest";
 
 #[derive(Deserialize)]
 struct Release {

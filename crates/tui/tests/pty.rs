@@ -272,7 +272,21 @@ async fn mouse_clicks_and_update_notice() {
     w.env.push(("PATH", format!("{}:{}", bin.display(), std::env::var("PATH").unwrap())));
     let mut tui = Tui::spawn(&w.env, &[]);
     tui.wait_for("Bravo Roleplay");
-    tui.wait_for("v9.9.9 available");
+    let screen = tui.wait_for("v9.9.9 available");
+    let opened = w.root.path().join("opened.txt");
+    let wait_opened = |what: &str| {
+        let start = Instant::now();
+        while !opened.is_file() {
+            assert!(start.elapsed() < Duration::from_secs(5), "xdg-open was not run");
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        assert_eq!(std::fs::read_to_string(&opened).unwrap().trim(), what);
+        std::fs::remove_file(&opened).unwrap();
+    };
+    let col = screen.lines().next().unwrap().find("v9.9.9 available").unwrap() + 2;
+    tui.send(format!("\x1b[<0;{col};1M\x1b[<0;{col};1m").as_bytes());
+    tui.wait_for("opened https://github.com/DignitySAMP/open.mp-linux-launcher/releases/latest");
+    wait_opened("https://github.com/DignitySAMP/open.mp-linux-launcher/releases/latest");
     // SGR mouse press/release, 1-based: row 5 is the second server line
     tui.send(b"\x1b[<0;12;5M\x1b[<0;12;5m");
     tui.wait_for("Bravo Roleplay  127.0.0.1");
@@ -290,13 +304,7 @@ async fn mouse_clicks_and_update_notice() {
     let row = screen.lines().position(|l| l.contains("website   https://example.org")).expect("website line") + 1;
     tui.send(format!("\x1b[<0;15;{row}M\x1b[<0;15;{row}m").as_bytes());
     tui.wait_for("opened https://example.org");
-    let opened = w.root.path().join("opened.txt");
-    let start = Instant::now();
-    while !opened.is_file() {
-        assert!(start.elapsed() < Duration::from_secs(5), "xdg-open was not run");
-        std::thread::sleep(Duration::from_millis(50));
-    }
-    assert_eq!(std::fs::read_to_string(&opened).unwrap().trim(), "https://example.org");
+    wait_opened("https://example.org");
     tui.send(b"q");
     assert!(tui.finish().success());
 }

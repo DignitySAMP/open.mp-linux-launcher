@@ -13,7 +13,9 @@ impl App {
         let at = Position::new(m.column, m.row);
         match m.kind {
             MouseEventKind::Down(MouseButton::Left) => {
-                if let Some(kind) = self.hit.tabs.iter().find(|(r, _)| r.contains(at)).map(|(_, k)| *k) {
+                if self.hit.update.contains(at) {
+                    self.open_link("release page", Some(omptui_core::update::RELEASE_PAGE.to_string()));
+                } else if let Some(kind) = self.hit.tabs.iter().find(|(r, _)| r.contains(at)).map(|(_, k)| *k) {
                     self.search_editing = false;
                     self.set_tab(kind);
                 } else if let Some(url) = self.hit.links.iter().find(|(r, _)| r.contains(at)).map(|(_, u)| u.clone()) {

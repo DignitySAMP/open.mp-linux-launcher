@@ -49,11 +49,16 @@ fn draw_header(f: &mut Frame, app: &mut App, area: Rect) {
         String::from("/ search")
     };
     x += 2;
-    app.hit.search = Rect::new(x, area.y, search_text.chars().count().max(8) as u16, 1);
+    let search_width = search_text.chars().count() as u16;
+    app.hit.search = Rect::new(x, area.y, search_width.max(8), 1);
     spans.push(Span::styled("  ", theme::dim()));
     spans.push(Span::styled(search_text, if app.search_editing { theme::key() } else { theme::dim() }));
+    app.hit.update = Rect::default();
     if let Some(v) = &app.update {
-        spans.push(Span::styled(format!("  v{v} available"), theme::warn()));
+        let notice = format!("v{v} available");
+        let at = x + search_width + 2;
+        app.hit.update = Rect::new(at, area.y, notice.chars().count() as u16, 1).intersection(area);
+        spans.push(Span::styled(format!("  {notice}"), theme::warn()));
     }
     let active = app.filters.active_count();
     if active > 0 || app.filters.sort != omptui_core::filter::SortKey::None {

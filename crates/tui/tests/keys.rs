@@ -1043,3 +1043,21 @@ async fn links_in_the_details_pane_are_hit_areas() {
     assert_eq!(moved.y, web.y + 1);
     assert_eq!(moved.y, line_of(&screen, "website   https://www.example.org"));
 }
+
+#[tokio::test]
+async fn update_notice_is_a_hit_area() {
+    let mut h = app_with_list().await;
+    render(&mut h.app, 120, 32);
+    assert!(h.app.hit.update.is_empty());
+    h.app.update = Some("9.9.9".into());
+    let screen = render(&mut h.app, 120, 32);
+    let header = screen.lines().next().unwrap().trim_start_matches('"');
+    let col = header[..header.find("v9.9.9 available").unwrap()].chars().count() as u16;
+    assert_eq!((h.app.hit.update.x, h.app.hit.update.y), (col, 0));
+    assert_eq!(h.app.hit.update.width, "v9.9.9 available".len() as u16);
+    // moves along with the search text
+    key(&mut h.app, KeyCode::Char('/'));
+    type_str(&mut h.app, "alpha freeroam");
+    render(&mut h.app, 120, 32);
+    assert!(h.app.hit.update.x > col);
+}
