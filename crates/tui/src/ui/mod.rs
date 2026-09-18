@@ -23,7 +23,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     let [players_area, graph_area] =
         Layout::vertical([Constraint::Percentage(60), Constraint::Percentage(40)]).areas(right);
     draw_list(f, app, list_area);
-    draw_details(f, app, details_area);
+    app.hit.links = draw_details(f, app, details_area);
     draw_players(f, app, players_area);
     draw_graph(f, app, graph_area);
     draw_footer(f, app, footer);
@@ -184,18 +184,25 @@ fn draw_list(f: &mut Frame, app: &mut App, area: Rect) {
     }
 }
 
+const KV_LABEL: u16 = 10;
+
 fn kv<'a>(k: &'a str, v: String) -> Line<'a> {
     Line::from(vec![Span::styled(format!("{k:<10}"), theme::dim()), Span::styled(v, theme::text())])
 }
 
-fn draw_details(f: &mut Frame, app: &App, area: Rect) {
+fn link<'a>(k: &'a str, url: String) -> Line<'a> {
+    let style = theme::text().add_modifier(ratatui::style::Modifier::UNDERLINED);
+    Line::from(vec![Span::styled(format!("{k:<10}"), theme::dim()), Span::styled(url, style)])
+}
+
+fn draw_details(f: &mut Frame, app: &App, area: Rect) -> Vec<(Rect, String)> {
     let block =
         Block::bordered().title(Line::from(Span::styled(" Details ", theme::title()))).border_style(theme::border());
     let inner = block.inner(area);
     f.render_widget(block, area);
     let Some(s) = app.selected_server() else {
         f.render_widget(Paragraph::new("select a server").style(theme::dim()), inner);
-        return;
+        return Vec::new();
     };
     let mut lines = vec![
         Line::from(vec![
@@ -238,19 +245,26 @@ fn draw_details(f: &mut Frame, app: &App, area: Rect) {
         }
         lines.push(kv("overrides", parts.join(", ")));
     }
+    // (index into lines, url)
+    let mut links = Vec::new();
     for (label, url, key) in [("website", s.website(), "w"), ("discord", s.discord(), "D")] {
         if let Some(url) = url {
-            let mut line = kv(label, url);
+            links.push((lines.len(), url.clone()));
+            let mut line = link(label, url);
             line.push_span(Span::styled(format!("  ({key})"), theme::key()));
             lines.push(line);
         }
     }
     if let Some(e) = &s.extra {
-        if !e.light_banner.is_empty() {
-            lines.push(kv("banner", e.light_banner.clone()));
-        }
-        if !e.logo.is_empty() {
-            lines.push(kv("logo", e.logo.clone()));
+        for (label, raw) in [("banner", &e.light_banner), ("logo", &e.logo)] {
+            match omptui_core::http_link(raw) {
+                Some(url) => {
+                    links.push((lines.len(), url));
+                    lines.push(link(label, raw.clone()));
+                }
+                None if !raw.is_empty() => lines.push(kv(label, raw.clone())),
+                None => {}
+            }
         }
     }
     if !s.rules.is_empty() {
@@ -265,7 +279,21 @@ fn draw_details(f: &mut Frame, app: &App, area: Rect) {
             Span::styled(rules.join("  "), theme::text()),
         ]));
     }
+    // NOTE: long hostnames wrap, rows below shift
+    let row_of = |index: usize| {
+        Paragraph::new(lines[..index].to_vec()).wrap(Wrap { trim: false }).line_count(inner.width) as u16
+    };
+    let hits = links
+        .into_iter()
+        .map(|(index, url)| {
+            let width = lines[index].spans[1].content.chars().count() as u16;
+            let rect = Rect { x: inner.x + KV_LABEL, y: inner.y + row_of(index), width, height: 1 };
+            (rect.intersection(inner), url)
+        })
+        .filter(|(r, _)| !r.is_empty())
+        .collect();
     f.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), inner);
+    hits
 }
 
 fn draw_players(f: &mut Frame, app: &App, area: Rect) {

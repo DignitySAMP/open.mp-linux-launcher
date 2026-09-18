@@ -45,6 +45,8 @@ pub struct HitAreas {
     pub list: Rect,
     // table rows without the header line
     pub rows: Rect,
+    // urls in the details pane
+    pub links: Vec<(Rect, String)>,
     pub popup: PopupHits,
 }
 

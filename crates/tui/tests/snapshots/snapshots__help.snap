@@ -27,7 +27,7 @@ expression: "render(&mut h.app, 100, 30)"
 "│players   12/│ q                     quit                                           │             │"
 "│version   omp│                                                                      │             │"
 "│ping      45m│ ◆ open.mp server   ○ SA-MP server   ★ favorite   🔒 password         │             │" Hidden by multi-width symbols: [(66, " ")]
-"│website   htt│ mouse: click selects, double-click joins, wheel scrolls              │             │"
+"│website   htt│ mouse: click selects, double-click joins, wheel scrolls, links open  │             │"
 "│discord   htt└──────────────────────────────────────────────────────────────────────┘             │"
 "│rules     mapname=San Andreas  weather=10                        ││█▂███▄██                       │"
 "└─────────────────────────────────────────────────────────────────┘└───────────────────────────────┘"

@@ -262,7 +262,14 @@ async fn remembered_password_is_encrypted_on_disk_and_restored() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn mouse_clicks_and_update_notice() {
-    let w = world().await;
+    use std::os::unix::fs::PermissionsExt;
+    let mut w = world().await;
+    let bin = w.root.path().join("bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    let script = format!("#!/bin/sh\necho \"$1\" > '{}'\n", w.root.path().join("opened.txt").display());
+    std::fs::write(bin.join("xdg-open"), script).unwrap();
+    std::fs::set_permissions(bin.join("xdg-open"), std::fs::Permissions::from_mode(0o755)).unwrap();
+    w.env.push(("PATH", format!("{}:{}", bin.display(), std::env::var("PATH").unwrap())));
     let mut tui = Tui::spawn(&w.env, &[]);
     tui.wait_for("Bravo Roleplay");
     tui.wait_for("v9.9.9 available");
@@ -278,7 +285,18 @@ async fn mouse_clicks_and_update_notice() {
     tui.send(b"\x1b[<0;2;2M\x1b[<0;2;2m");
     tui.wait_gone("Join server");
     tui.send(b"\x1b[<64;12;5M");
-    tui.wait_for("Alpha Freeroam  127.0.0.1");
+    let screen = tui.wait_for("Alpha Freeroam  127.0.0.1");
+    // xdg-open is a script here
+    let row = screen.lines().position(|l| l.contains("website   https://example.org")).expect("website line") + 1;
+    tui.send(format!("\x1b[<0;15;{row}M\x1b[<0;15;{row}m").as_bytes());
+    tui.wait_for("opened https://example.org");
+    let opened = w.root.path().join("opened.txt");
+    let start = Instant::now();
+    while !opened.is_file() {
+        assert!(start.elapsed() < Duration::from_secs(5), "xdg-open was not run");
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    assert_eq!(std::fs::read_to_string(&opened).unwrap().trim(), "https://example.org");
     tui.send(b"q");
     assert!(tui.finish().success());
 }

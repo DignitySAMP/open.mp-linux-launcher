@@ -16,6 +16,8 @@ impl App {
                 if let Some(kind) = self.hit.tabs.iter().find(|(r, _)| r.contains(at)).map(|(_, k)| *k) {
                     self.search_editing = false;
                     self.set_tab(kind);
+                } else if let Some(url) = self.hit.links.iter().find(|(r, _)| r.contains(at)).map(|(_, u)| u.clone()) {
+                    self.open_link("link", Some(url));
                 } else if self.hit.search.contains(at) {
                     self.search_editing = true;
                 } else if self.hit.rows.contains(at) {

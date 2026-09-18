@@ -1015,3 +1015,31 @@ async fn mouse_in_settings_filters_and_dialogs() {
     click_row(&mut h.app, 0);
     assert!(h.app.lists.recent.is_empty());
 }
+
+#[tokio::test]
+async fn links_in_the_details_pane_are_hit_areas() {
+    let mut h = harness(Settings { query_lists: false, ..Default::default() }, Lists::default()).await;
+    let mut s = server(7001, "Alpha Freeroam", 12, true, false);
+    s.rules.insert("weburl".into(), "www.example.org".into());
+    s.extra = Some(omptui_core::ExtraInfo {
+        discord: "https://discord.gg/abc".into(),
+        logo: "not a link".into(),
+        ..Default::default()
+    });
+    h.app.handle_event(AppEvent::ApiLoaded(Ok(vec![s.clone()])));
+    let screen = render(&mut h.app, 120, 32);
+    let line_of = |screen: &str, what: &str| screen.lines().position(|l| l.contains(what)).unwrap() as u16;
+    let urls: Vec<&str> = h.app.hit.links.iter().map(|(_, u)| u.as_str()).collect();
+    assert_eq!(urls, ["https://www.example.org", "https://discord.gg/abc"], "the logo is not a URL");
+    let (web, _) = h.app.hit.links[0];
+    assert_eq!(web.y, line_of(&screen, "website   https://www.example.org"));
+    assert_eq!(web.width, "https://www.example.org".len() as u16);
+
+    // wrapped hostname moves the links one row down
+    s.info.hostname = "x".repeat(90);
+    h.app.handle_event(AppEvent::ApiLoaded(Ok(vec![s])));
+    let screen = render(&mut h.app, 120, 32);
+    let (moved, _) = h.app.hit.links[0];
+    assert_eq!(moved.y, web.y + 1);
+    assert_eq!(moved.y, line_of(&screen, "website   https://www.example.org"));
+}

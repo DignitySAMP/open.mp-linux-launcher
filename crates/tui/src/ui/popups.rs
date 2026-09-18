@@ -322,7 +322,10 @@ fn draw_help(f: &mut Frame, area: Rect) -> PopupHits {
         .collect();
     lines.push(Line::raw(""));
     lines.push(Line::from(Span::styled(" ◆ open.mp server   ○ SA-MP server   ★ favorite   🔒 password", theme::dim())));
-    lines.push(Line::from(Span::styled(" mouse: click selects, double-click joins, wheel scrolls", theme::dim())));
+    lines.push(Line::from(Span::styled(
+        " mouse: click selects, double-click joins, wheel scrolls, links open",
+        theme::dim(),
+    )));
     f.render_widget(Paragraph::new(lines), inner);
     PopupHits { area: rect, rows: Vec::new() }
 }
