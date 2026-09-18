@@ -181,6 +181,14 @@ impl Services {
         });
     }
 
+    pub fn install_arial(&self, env: WineEnv) {
+        let tx = self.tx.clone();
+        tokio::spawn(async move {
+            let result = crate::install_arial(&env).await.map(|()| vec!["arial.ttf installed".to_string()]);
+            let _ = tx.send(AppEvent::TaskDone { title: "Install Arial".into(), result });
+        });
+    }
+
     pub fn import_userdata(&self, path: PathBuf) {
         let tx = self.tx.clone();
         tokio::task::spawn_blocking(move || {

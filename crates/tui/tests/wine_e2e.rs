@@ -61,6 +61,8 @@ async fn run_case(wine: &Path, root: &Path, game_exe: &Path, dll: &Path, suspend
     };
     let prepared = launch::prepare(&req, &files, omp_tui::HELPER_EXE).unwrap();
     assert!(prepared.warnings.iter().any(|w| w.contains("not the 1.0 US")));
+    assert!(!req.wine.prefix().has_arial(), "wineboot is not expected to install Arial");
+    assert!(prepared.warnings.iter().any(|w| w.contains("arial.ttf is missing")), "{:?}", prepared.warnings);
     assert_eq!(prepared.copied.len(), SHARED_FILES.len());
     let (tx, mut rx) = mpsc::channel(64);
     let code = launch::run(&prepared, tx).await.unwrap();

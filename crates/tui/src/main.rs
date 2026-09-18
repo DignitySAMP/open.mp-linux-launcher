@@ -193,6 +193,19 @@ async fn first_run_downloads(
             Err(e) => report.push(format!("Client files could not be downloaded: {e}. Retry from Settings.")),
         }
     }
+    if let Some(prefix) = &settings.wine_prefix
+        && let Some(wine) = &settings.wine_binary
+    {
+        let pfx = omptui_core::wine::Prefix::new(prefix);
+        if pfx.exists() && !pfx.has_arial() {
+            println!("Installing Arial into the Wine prefix with winetricks (one time)…");
+            let env = WineEnv { wine: wine.clone(), prefix: prefix.clone(), extra_env: settings.env.clone() };
+            match omp_tui::install_arial(&env).await {
+                Ok(()) => report.push("Arial installed into the prefix with winetricks".into()),
+                Err(e) => report.push(format!("Arial (SA-MP crashes on pause without it) is missing: {e}")),
+            }
+        }
+    }
     if settings.omp_inject
         && let Some(prefix) = &settings.wine_prefix
         && let Some(wine) = &settings.wine_binary

@@ -106,24 +106,34 @@ async fn event_loop(
     }
 }
 
-pub async fn install_d3dx9(env: &omptui_core::wine::WineEnv) -> Result<(), String> {
+async fn winetricks(
+    env: &omptui_core::wine::WineEnv,
+    verb: &str,
+    installed: impl Fn(&omptui_core::wine::Prefix) -> bool,
+) -> Result<(), String> {
     let mut cmd = tokio::process::Command::new("winetricks");
-    cmd.args(["-q", "d3dx9"]).env("WINEPREFIX", &env.prefix).env("WINE", &env.wine).env("WINEDEBUG", "-all");
+    cmd.args(["-q", verb]).env("WINEPREFIX", &env.prefix).env("WINE", &env.wine).env("WINEDEBUG", "-all");
     for (k, v) in &env.extra_env {
         cmd.env(k, v);
     }
-    println!(
-        "Installing d3dx9 into the Wine prefix with winetricks (one time, this downloads the DirectX redistributable)…"
-    );
     let out =
         cmd.output().await.map_err(|e| format!("could not run winetricks: {e} (install the winetricks package)"))?;
-    let has =
-        omptui_core::wine::Prefix::new(&env.prefix).system_dirs().iter().any(|d| d.join("d3dx9_25.dll").is_file());
-    if out.status.success() && has {
+    if out.status.success() && installed(&env.prefix()) {
         Ok(())
     } else {
         let text = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
         let tail: Vec<&str> = text.lines().rev().take(10).collect::<Vec<_>>().into_iter().rev().collect();
         Err(format!("winetricks exited with {}\n{}", out.status, tail.join("\n")))
     }
+}
+
+pub async fn install_d3dx9(env: &omptui_core::wine::WineEnv) -> Result<(), String> {
+    println!(
+        "Installing d3dx9 into the Wine prefix with winetricks (one time, this downloads the DirectX redistributable)…"
+    );
+    winetricks(env, "d3dx9", |p| p.system_dirs().iter().any(|d| d.join("d3dx9_25.dll").is_file())).await
+}
+
+pub async fn install_arial(env: &omptui_core::wine::WineEnv) -> Result<(), String> {
+    winetricks(env, "arial", |p| p.has_arial()).await
 }

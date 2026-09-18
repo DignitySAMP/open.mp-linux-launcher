@@ -157,6 +157,12 @@ pub fn prepare(req: &LaunchRequest, files: &ClientFiles, helper: &[u8]) -> Resul
         }
     }
 
+    if !prefix.has_arial() {
+        warnings.push(
+            "arial.ttf is missing from the prefix; SA-MP crashes when the game is paused without it (run `winetricks arial` for this prefix or use Settings > Install Arial)"
+                .into(),
+        );
+    }
     let helper_path = extract_helper(files, helper)?;
     let win =
         |p: &Path| prefix.to_windows_path(p).ok_or_else(|| LaunchError::Path(p.to_path_buf(), req.wine.prefix.clone()));

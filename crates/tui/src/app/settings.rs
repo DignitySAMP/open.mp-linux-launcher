@@ -239,6 +239,11 @@ impl App {
                 self.status("running winetricks d3dx9 (this takes a while)…", false);
                 self.svc.install_d3dx9(env);
             }
+            SettingsRow::ActionInstallArial => {
+                let env = self.wine_env();
+                self.status("running winetricks arial…", false);
+                self.svc.install_arial(env);
+            }
             SettingsRow::ActionImportUserdata => {
                 let guess = self
                     .settings
@@ -289,6 +294,10 @@ impl App {
             lines.push(format!(
                 "d3dx9_25.dll in prefix: {}",
                 if d3dx { "✓" } else { "✗ missing (needed by the open.mp client)" }
+            ));
+            lines.push(format!(
+                "arial.ttf in prefix: {}",
+                if pfx.has_arial() { "✓" } else { "✗ missing (SA-MP crashes on pause without it)" }
             ));
         }
         match &self.settings.game_dir {

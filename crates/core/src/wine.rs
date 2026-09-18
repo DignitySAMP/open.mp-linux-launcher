@@ -125,6 +125,12 @@ impl Prefix {
         ["syswow64", "system32"].iter().map(|d| self.drive_c().join("windows").join(d)).filter(|p| p.is_dir()).collect()
     }
 
+    // NOTE: samp crashes on esc (device reset) without the real arial.ttf, font replacements don't help
+    pub fn has_arial(&self) -> bool {
+        fs::read_dir(self.drive_c().join("windows").join("Fonts"))
+            .is_ok_and(|rd| rd.flatten().any(|e| e.file_name().to_string_lossy().eq_ignore_ascii_case("arial.ttf")))
+    }
+
     fn drives(&self) -> Vec<(char, PathBuf)> {
         let dd = self.path.join("dosdevices");
         let mut out = Vec::new();
@@ -294,6 +300,18 @@ mod tests {
         assert_eq!(pfx.system_dirs().len(), 2);
         assert!(pfx.system_dirs()[0].ends_with("syswow64"));
         assert!(!Prefix::new("/nonexistent").exists());
+    }
+
+    #[test]
+    fn arial_lookup_ignores_case() {
+        let (_d, pfx) = fake_prefix();
+        assert!(!pfx.has_arial());
+        let fonts = pfx.drive_c().join("windows/Fonts");
+        fs::create_dir_all(&fonts).unwrap();
+        fs::write(fonts.join("arialbd.ttf"), b"").unwrap();
+        assert!(!pfx.has_arial());
+        fs::write(fonts.join("Arial.TTF"), b"").unwrap();
+        assert!(pfx.has_arial());
     }
 
     #[test]

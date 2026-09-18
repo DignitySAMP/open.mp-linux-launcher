@@ -278,3 +278,52 @@ async fn mouse_clicks_and_update_notice() {
     tui.send(b"q");
     assert!(tui.finish().success());
 }
+
+// winetricks -q arial
+const FAKE_WINETRICKS: &str = r#"#!/bin/sh
+[ "$1" = -q ] && [ "$2" = arial ] || exit 1
+mkdir -p "$WINEPREFIX/drive_c/windows/Fonts" && : > "$WINEPREFIX/drive_c/windows/Fonts/arial.ttf"
+"#;
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn install_arial_from_settings() {
+    use std::os::unix::fs::PermissionsExt;
+    let mut w = world().await;
+    let root = w.root.path().to_path_buf();
+    let prefix = root.join("prefix");
+    std::fs::create_dir_all(prefix.join("drive_c/windows/syswow64")).unwrap();
+    std::fs::write(prefix.join("system.reg"), "WINE REGISTRY Version 2\n#arch=win64\n").unwrap();
+    let bin = root.join("bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    std::fs::write(bin.join("winetricks"), FAKE_WINETRICKS).unwrap();
+    std::fs::set_permissions(bin.join("winetricks"), std::fs::Permissions::from_mode(0o755)).unwrap();
+    w.env.push(("PATH", format!("{}:{}", bin.display(), std::env::var("PATH").unwrap())));
+    let args: Vec<String> = ["--wine", "/bin/true", "--prefix", prefix.to_str().unwrap()].map(String::from).into();
+
+    let check = |env: &[(&str, String)]| {
+        let out = std::process::Command::new(env!("CARGO_BIN_EXE_omp-tui"))
+            .args(&args)
+            .arg("--check")
+            .envs(env.iter().map(|(k, v)| (*k, v.as_str())))
+            .output()
+            .unwrap();
+        String::from_utf8_lossy(&out.stdout).into_owned()
+    };
+    assert!(check(&w.env).contains("arial.ttf in prefix: ✗ missing"), "{}", check(&w.env));
+
+    let mut tui = Tui::spawn(&w.env, &args);
+    tui.wait_for("Bravo Roleplay");
+    tui.send(b",");
+    tui.wait_for("Install Arial into the prefix");
+    for _ in 0..3 {
+        tui.send(b"\x1b[A");
+    }
+    tui.send(b"\r");
+    tui.wait_for("arial.ttf installed");
+    tui.send(b"\r");
+    tui.send(b"\x1b");
+    tui.send(b"q");
+    assert!(tui.finish().success());
+    assert!(omptui_core::wine::Prefix::new(&prefix).has_arial());
+    assert!(check(&w.env).contains("arial.ttf in prefix: ✓"), "{}", check(&w.env));
+}
