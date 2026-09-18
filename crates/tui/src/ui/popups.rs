@@ -44,6 +44,15 @@ fn frame(f: &mut Frame, area: Rect, title: &str, error: bool) -> Rect {
     inner
 }
 
+pub(crate) fn ellipsize_left(s: &str, width: usize) -> String {
+    let n = s.chars().count();
+    if n <= width || width == 0 {
+        return s.to_owned();
+    }
+    let tail: String = s.chars().skip(n - (width - 1)).collect();
+    format!("…{tail}")
+}
+
 fn field<'a>(label: &'a str, input: &Input, active: bool) -> Line<'a> {
     let style = if active { theme::key() } else { theme::text() };
     Line::from(vec![
@@ -108,14 +117,15 @@ fn draw_join(f: &mut Frame, area: Rect, form: &JoinForm) {
 fn draw_prompt(f: &mut Frame, area: Rect, title: &str, hint: &str, input: &Input) {
     let rect = centered(area, 80, 6);
     let inner = frame(f, rect, title, false);
+    let (shown, col) = input.window(usize::from(inner.width.saturating_sub(3)));
     let lines = vec![
         Line::from(Span::styled(hint, theme::dim())),
         Line::raw(""),
-        Line::from(vec![Span::styled("> ", theme::key()), Span::styled(input.display(), theme::text())]),
+        Line::from(vec![Span::styled("> ", theme::key()), Span::styled(shown, theme::text())]),
         Line::from(Span::styled("Enter confirm  Esc cancel", theme::dim())),
     ];
     f.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), inner);
-    let x = inner.x + 2 + input.cursor() as u16;
+    let x = inner.x + 2 + col as u16;
     f.set_cursor_position((x.min(inner.right().saturating_sub(1)), inner.y + 2));
 }
 
@@ -170,10 +180,14 @@ fn draw_filters(f: &mut Frame, app: &App, area: Rect, form: &FilterForm) {
     }
 }
 
+const SETTINGS_LABEL: u16 = 38;
+
 fn draw_settings(f: &mut Frame, app: &App, area: Rect, form: &SettingsForm) {
     let rect = centered(area, 96, 27);
     let inner = frame(f, rect, "Settings", false);
     let [list_area, msg_area] = Layout::vertical([Constraint::Min(3), Constraint::Length(2)]).areas(inner);
+    let value_width = usize::from(list_area.width.saturating_sub(SETTINGS_LABEL + 2));
+    let mut cursor_col = 0;
     let mut lines = Vec::new();
     for (i, row) in SettingsRow::ALL.iter().enumerate() {
         let active = i == form.cursor;
@@ -187,13 +201,14 @@ fn draw_settings(f: &mut Frame, app: &App, area: Rect, form: &SettingsForm) {
                 if active { theme::selected() } else { theme::key() },
             ))
         } else if active && form.editing.is_some() {
-            let input = form.editing.as_ref().unwrap();
+            let (shown, col) = form.editing.as_ref().unwrap().window(value_width);
+            cursor_col = col as u16;
             Line::from(vec![
                 Span::styled(format!(" {:<38}", row.label()), theme::dim()),
-                Span::styled(format!("▏{}", input.display()), theme::key()),
+                Span::styled(format!("▏{shown}"), theme::key()),
             ])
         } else {
-            let value = app.settings_display(*row);
+            let value = ellipsize_left(&app.settings_display(*row), value_width + 1);
             Line::from(vec![
                 Span::styled(format!(" {:<38}", row.label()), if active { style } else { theme::dim() }),
                 Span::styled(value, style),
@@ -211,7 +226,7 @@ fn draw_settings(f: &mut Frame, app: &App, area: Rect, form: &SettingsForm) {
         )),
     };
     f.render_widget(Paragraph::new(hint).wrap(Wrap { trim: true }), msg_area);
-    if let Some(input) = &form.editing {
+    if form.editing.is_some() {
         let extra =
             if form.cursor >= SettingsRow::ALL.iter().position(|r| *r == SettingsRow::ActionCheckFiles).unwrap_or(99) {
                 1
@@ -219,7 +234,7 @@ fn draw_settings(f: &mut Frame, app: &App, area: Rect, form: &SettingsForm) {
                 0
             };
         let y = list_area.y + form.cursor as u16 + extra;
-        let x = list_area.x + 1 + 38 + 1 + input.cursor() as u16;
+        let x = list_area.x + SETTINGS_LABEL + 2 + cursor_col;
         f.set_cursor_position((x.min(list_area.right().saturating_sub(1)), y));
     }
 }

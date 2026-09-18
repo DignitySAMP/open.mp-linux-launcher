@@ -211,6 +211,25 @@ async fn settings_help_and_server_settings() {
 }
 
 #[tokio::test]
+async fn settings_long_values_stay_readable() {
+    let mut h = loaded_app().await;
+    h.app.settings.wine_binary = Some("/usr/share/steam/compatibilitytools.d/proton-cachyos-slr/files/bin/wine".into());
+    h.app.settings.wine_prefix = Some("/home/user/.local/share/omp-tui/prefix".into());
+    h.app.settings.terminal = Some("foot".into());
+    key(&mut h.app, KeyCode::Char(','));
+    let shown = render(&mut h.app, 100, 32);
+    assert!(shown.contains("…compatibilitytools.d/proton-cachyos-slr/files/bin/wine│"), "{shown}");
+    for _ in 0..5 {
+        key(&mut h.app, KeyCode::Down);
+    }
+    key(&mut h.app, KeyCode::Enter);
+    insta::assert_snapshot!("settings_long_edit", render(&mut h.app, 100, 32));
+    key(&mut h.app, KeyCode::Home);
+    let shown = render(&mut h.app, 100, 32);
+    assert!(shown.contains("▏/usr/share/steam/compatibilitytools.d/proton-cachyos-"), "{shown}");
+}
+
+#[tokio::test]
 async fn api_error_and_message() {
     let mut h = harness(settings(), Lists::default()).await;
     h.app.handle_event(AppEvent::ApiLoaded(Err("connection refused".into())));

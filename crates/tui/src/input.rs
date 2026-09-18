@@ -36,6 +36,25 @@ impl Input {
         if self.masked { "•".repeat(self.value.chars().count()) } else { self.value.clone() }
     }
 
+    // ret the visible part of the value and the cursor column in it
+    pub fn window(&self, width: usize) -> (String, usize) {
+        let mut chars: Vec<char> = self.display().chars().collect();
+        if width == 0 || chars.len() < width {
+            return (chars.into_iter().collect(), self.cursor);
+        }
+        let start = (self.cursor + 1).saturating_sub(width);
+        let col = self.cursor - start;
+        let cut_right = chars.len() > start + width;
+        chars = chars.into_iter().skip(start).take(width).collect();
+        if start > 0 {
+            chars[0] = '…';
+        }
+        if cut_right && col + 1 < width {
+            chars[width - 1] = '…';
+        }
+        (chars.into_iter().collect(), col)
+    }
+
     fn byte_at(&self, idx: usize) -> usize {
         self.value.char_indices().nth(idx).map(|(b, _)| b).unwrap_or(self.value.len())
     }
@@ -116,6 +135,12 @@ mod tests {
         assert!(!i.handle(k(KeyCode::Enter)));
         let m = Input::new("pw").masked();
         assert_eq!(m.display(), "••");
+        let long = Input::new("/usr/share/steam/compatibilitytools.d/proton/files/bin/wine");
+        assert_eq!(long.window(80), (long.value().to_owned(), 59));
+        assert_eq!(long.window(16), ("…files/bin/wine".to_owned(), 15));
+        let mut home = long.clone();
+        home.handle(k(KeyCode::Home));
+        assert_eq!(home.window(16), ("/usr/share/stea…".to_owned(), 0));
         let mut u = Input::new("é");
         u.handle(k(KeyCode::Char('x')));
         assert_eq!(u.value(), "éx");
