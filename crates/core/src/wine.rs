@@ -14,34 +14,59 @@ fn home() -> Option<PathBuf> {
     directories::BaseDirs::new().map(|b| b.home_dir().to_path_buf())
 }
 
+// proton keeps wine in files/bin, old proton in dist/bin
+const RUNNER_BINS: [&str; 3] = ["bin/wine", "files/bin/wine", "dist/bin/wine"];
+
+fn push_unique(out: &mut Vec<WineBinary>, path: PathBuf, label: String) {
+    let canon = fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
+    if !out.iter().any(|w| fs::canonicalize(&w.path).unwrap_or_else(|_| w.path.clone()) == canon) {
+        out.push(WineBinary { path, label });
+    }
+}
+
 fn glob_runners(base: &Path, label: &str, out: &mut Vec<WineBinary>) {
     let Ok(rd) = fs::read_dir(base) else { return };
     let mut entries: Vec<_> = rd.flatten().map(|e| e.path()).collect();
     entries.sort();
     entries.reverse(); // newest-looking versions first
     for dir in entries {
-        let bin = dir.join("bin").join("wine");
-        if bin.is_file() {
+        if let Some(bin) = RUNNER_BINS.iter().map(|b| dir.join(b)).find(|b| b.is_file()) {
             let name = dir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-            out.push(WineBinary { path: bin, label: format!("{label} {name}") });
+            push_unique(out, bin, format!("{label} {name}"));
         }
     }
 }
 
+fn runner_dirs(home: &Path, root: &Path) -> Vec<(PathBuf, &'static str)> {
+    vec![
+        (home.join(".local/share/lutris/runners/wine"), "lutris"),
+        (home.join(".local/share/bottles/runners"), "bottles"),
+        (home.join(".var/app/com.usebottles.bottles/data/bottles/runners"), "bottles (flatpak)"),
+        (home.join(".local/share/Steam/compatibilitytools.d"), "steam compat tool"),
+        (home.join(".steam/root/compatibilitytools.d"), "steam compat tool"),
+        (root.join("usr/share/steam/compatibilitytools.d"), "steam compat tool"),
+    ]
+}
+
 pub fn discover_wine() -> Vec<WineBinary> {
+    discover_wine_in(home().as_deref(), Path::new("/"), std::env::var_os("PATH").as_deref())
+}
+
+// NOTE: root is "/" unless a test passes a temp dir
+pub fn discover_wine_in(home: Option<&Path>, root: &Path, path_var: Option<&std::ffi::OsStr>) -> Vec<WineBinary> {
     let mut out = Vec::new();
     for (p, label) in [
-        ("/opt/wine-cachyos/bin/wine", "wine-cachyos-opt"),
-        ("/opt/wine-staging/bin/wine", "wine-staging"),
-        ("/opt/wine-tkg/bin/wine", "wine-tkg"),
+        ("opt/wine-cachyos/bin/wine", "wine-cachyos-opt"),
+        ("opt/wine-staging/bin/wine", "wine-staging"),
+        ("opt/wine-tkg/bin/wine", "wine-tkg"),
     ] {
-        let p = Path::new(p);
+        let p = root.join(p);
         if p.is_file() {
-            out.push(WineBinary { path: p.to_path_buf(), label: label.into() });
+            out.push(WineBinary { path: p, label: label.into() });
         }
     }
-    if let Some(path) = std::env::var_os("PATH") {
-        for dir in std::env::split_paths(&path) {
+    if let Some(path) = path_var {
+        for dir in std::env::split_paths(path) {
             let p = dir.join("wine");
             if p.is_file() && !out.iter().any(|w| w.path == p) {
                 out.push(WineBinary { path: p, label: "system wine".into() });
@@ -49,11 +74,10 @@ pub fn discover_wine() -> Vec<WineBinary> {
             }
         }
     }
-    if let Some(h) = home() {
-        glob_runners(&h.join(".local/share/lutris/runners/wine"), "lutris", &mut out);
-        glob_runners(&h.join(".local/share/bottles/runners"), "bottles", &mut out);
-        glob_runners(&h.join(".var/app/com.usebottles.bottles/data/bottles/runners"), "bottles (flatpak)", &mut out);
-        glob_runners(&h.join(".local/share/Steam/compatibilitytools.d"), "steam compat tool", &mut out);
+    if let Some(h) = home {
+        for (dir, label) in runner_dirs(h, root) {
+            glob_runners(&dir, label, &mut out);
+        }
     }
     out
 }
@@ -305,6 +329,54 @@ mod tests {
         assert_eq!(envs["WINEPREFIX"].as_deref(), Some("/tmp/pfx"));
         assert_eq!(envs["WINEDEBUG"].as_deref(), Some("-all"));
         assert_eq!(envs["DXVK_HUD"].as_deref(), Some("fps"));
+    }
+
+    fn touch(p: &Path) {
+        fs::create_dir_all(p.parent().unwrap()).unwrap();
+        fs::write(p, b"").unwrap();
+    }
+
+    #[test]
+    fn discovers_proton_layouts_and_system_compat_tools() {
+        let d = tempfile::tempdir().unwrap();
+        let (home, root) = (d.path().join("home"), d.path().join("root"));
+        touch(&home.join(".local/share/lutris/runners/wine/wine-ge-8-26/bin/wine"));
+        touch(&home.join(".local/share/lutris/runners/wine/proton-cachyos/files/bin/wine"));
+        touch(&home.join(".local/share/Steam/compatibilitytools.d/GE-Proton9-1/files/bin/wine"));
+        touch(&home.join(".local/share/Steam/compatibilitytools.d/Proton-5.0-GE/dist/bin/wine"));
+        touch(&home.join(".local/share/Steam/compatibilitytools.d/not-a-runner/readme.txt"));
+        touch(&root.join("usr/share/steam/compatibilitytools.d/proton-cachyos-slr/files/bin/wine"));
+        // ~/.steam/root is a symlink to ~/.local/share/Steam, no doubles
+        fs::create_dir_all(home.join(".steam")).unwrap();
+        symlink(home.join(".local/share/Steam"), home.join(".steam/root")).unwrap();
+
+        let found = discover_wine_in(Some(&home), &root, None);
+        let labels: Vec<&str> = found.iter().map(|w| w.label.as_str()).collect();
+        assert_eq!(
+            labels,
+            [
+                "lutris wine-ge-8-26",
+                "lutris proton-cachyos",
+                "steam compat tool Proton-5.0-GE",
+                "steam compat tool GE-Proton9-1",
+                "steam compat tool proton-cachyos-slr",
+            ]
+        );
+        assert!(found[1].path.ends_with("proton-cachyos/files/bin/wine"));
+        assert!(found[4].path.starts_with(&root));
+    }
+
+    #[test]
+    fn opt_and_path_wine_come_first() {
+        let d = tempfile::tempdir().unwrap();
+        let (home, root) = (d.path().join("home"), d.path().join("root"));
+        touch(&root.join("opt/wine-cachyos/bin/wine"));
+        touch(&root.join("usr/bin/wine"));
+        touch(&home.join(".local/share/lutris/runners/wine/wine-ge/bin/wine"));
+        let path = std::env::join_paths([root.join("usr/local/bin"), root.join("usr/bin")]).unwrap();
+        let found = discover_wine_in(Some(&home), &root, Some(&path));
+        let labels: Vec<&str> = found.iter().map(|w| w.label.as_str()).collect();
+        assert_eq!(labels, ["wine-cachyos-opt", "system wine", "lutris wine-ge"]);
     }
 
     #[test]
