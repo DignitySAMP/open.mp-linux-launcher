@@ -35,6 +35,8 @@ server details.
 
 ### Keys
 
+Switch tabs with `Alt+Left` / `Alt+Right`, `Tab` / `Shift+Tab`, or `1`–`4`.
+
 It comes with some shortcuts: `ENTER` to join a server, `F` to favourite, `/` to search, `w` to open
 a server's website, `D` to open a server's discord (open.mp servers only), `,` to open settings and
 `?` to list all usable keys.

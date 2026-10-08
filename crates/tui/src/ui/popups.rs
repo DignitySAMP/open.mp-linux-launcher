@@ -289,7 +289,7 @@ fn draw_server_settings(f: &mut Frame, area: Rect, form: &ServerSettingsForm) ->
 }
 
 const HELP: &[(&str, &str)] = &[
-    ("1-4 / Tab", "switch list: favorites, internet, partners, recent"),
+    ("1-4 Tab Alt+←/→", "switch list: favorites, internet, partners, recent"),
     ("j/k ↑/↓ PgUp/PgDn g/G", "move"),
     ("Enter", "join the selected server"),
     ("F / Space", "add or remove favorite"),

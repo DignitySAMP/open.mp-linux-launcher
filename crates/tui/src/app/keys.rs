@@ -38,6 +38,8 @@ impl App {
             KeyCode::Char('4') => self.set_tab(ListKind::Recent),
             KeyCode::Tab => self.cycle_tab(1),
             KeyCode::BackTab => self.cycle_tab(-1),
+            KeyCode::Right if key.modifiers == KeyModifiers::ALT => self.cycle_tab(1),
+            KeyCode::Left if key.modifiers == KeyModifiers::ALT => self.cycle_tab(-1),
             KeyCode::Down | KeyCode::Char('j') => self.move_selection(1),
             KeyCode::Up | KeyCode::Char('k') => self.move_selection(-1),
             KeyCode::PageDown | KeyCode::Char('d')
