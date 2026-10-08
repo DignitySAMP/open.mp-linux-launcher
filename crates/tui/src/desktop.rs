@@ -6,6 +6,8 @@ use std::process::{Command, Stdio};
 pub const APP_DESKTOP: &str = "omp-tui.desktop";
 pub const URL_DESKTOP: &str = "omp-tui-url.desktop";
 
+const APP_ICON: &[u8] = include_bytes!("../../../assets/omp-tui.png");
+
 const TERMINALS: &[(&str, &[&str])] = &[
     ("foot", &[]),
     ("kitty", &[]),
@@ -87,17 +89,23 @@ pub fn install_desktop_entries(bin: &Path, terminal: Option<&str>) -> io::Result
         .ok_or_else(|| io::Error::other("no terminal emulator found (set one in Settings)"))?;
     let dir = applications_dir();
     fs::create_dir_all(&dir)?;
+    let icon_dir = dir.with_file_name("omp-tui");
+    fs::create_dir_all(&icon_dir)?;
+    let icon = icon_dir.join("icon.png");
+    fs::write(&icon, APP_ICON)?;
+    report.push(format!("wrote {}", icon.display()));
+    let icon = icon.display();
     let bin = quote(&bin.to_string_lossy());
     let app = format!(
         "[Desktop Entry]\nType=Application\nName=omp-tui\nGenericName=GTA San Andreas multiplayer launcher\n\
          Comment=Browse and join open.mp / SA-MP servers\nExec={term} {bin}\nTerminal=false\n\
-         Icon=applications-games\nCategories=Game;\nKeywords=samp;openmp;gta;\nStartupNotify=false\n"
+         Icon={icon}\nCategories=Game;\nKeywords=samp;openmp;gta;\nStartupNotify=false\n"
     );
     fs::write(dir.join(APP_DESKTOP), app)?;
     report.push(format!("wrote {}", dir.join(APP_DESKTOP).display()));
     let url = format!(
         "[Desktop Entry]\nType=Application\nName=omp-tui (join server)\nNoDisplay=true\n\
-         Exec={term} {bin} %u\nTerminal=false\nIcon=applications-games\n\
+         Exec={term} {bin} %u\nTerminal=false\nIcon={icon}\n\
          MimeType=x-scheme-handler/omp;x-scheme-handler/samp;\nCategories=Game;\n"
     );
     fs::write(dir.join(URL_DESKTOP), url)?;
