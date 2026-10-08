@@ -13,6 +13,7 @@ const TERMINALS: &[(&str, &[&str])] = &[
     ("wezterm", &["start", "--"]),
     ("ghostty", &["-e"]),
     ("gnome-terminal", &["--"]),
+    ("ptyxis", &["--"]),
     ("konsole", &["-e"]),
     ("xterm", &["-e"]),
 ];
